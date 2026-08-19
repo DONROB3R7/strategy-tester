@@ -1,31 +1,84 @@
+// ======================================================
+// BACKTEST ENGINE
+// EMA200 + MACD + STOCHASTIC + KELTNER
+//
+// Rules:
+// - No stop loss
+// - ATR-based take profit
+// - Opposite signal reverses the position
+// - TP can be hit by an intrabar spike
+// - Cooldown applies after TP
+// ======================================================
+
 const {
   calculateIndicators,
-  getSignal,
-} = require("./strategy");
+} = require("./strategy/indicators");
 
+const {
+  getSignal,
+} = require("./strategy/strategy");
+
+
+// ======================================================
+// DEFAULT SETTINGS
+// ======================================================
+
+const DEFAULT_SETTINGS = {
+  balance: 100,
+
+  positionSize: 100,
+
+  cooldown: 0,
+
+  smaLength: 25,
+
+  emaLength: 200,
+
+  keltnerLength: 10,
+
+  keltnerMultiplier: 2,
+
+  atrLength: 15,
+
+  stochasticLength: 10,
+
+  stochasticSmooth: 1,
+
+  macdFast: 4,
+
+  macdSlow: 34,
+
+  macdSignal: 5,
+
+  tpATRMultiplier: 15,
+};
+
+
+// ======================================================
+// BACKTEST
+// ======================================================
 
 function runBacktest(
   candles,
-  settings
+  userSettings = {}
 ) {
-  const trades = [];
-  const equityCurve = [];
+  const settings = {
+    ...DEFAULT_SETTINGS,
+    ...userSettings,
+  };
 
-  let position = null;
+  if (
+    !Array.isArray(candles) ||
+    candles.length === 0
+  ) {
+    throw new Error(
+      "No candles provided"
+    );
+  }
 
-  let balance = settings.balance;
-
-  let peakBalance = balance;
-  let maxDrawdown = 0;
-
-  const riskPercent =
-    settings.risk / 100;
-
-  const riskReward =
-    settings.riskReward;
 
   // ==================================================
-  // CALCULATE INDICATORS
+  // INDICATORS
   // ==================================================
 
   const indicators =
@@ -36,7 +89,28 @@ function runBacktest(
 
 
   // ==================================================
-  // MAIN LOOP
+  // STATE
+  // ==================================================
+
+  let balance =
+    Number(settings.balance);
+
+  const startingBalance =
+    balance;
+
+  let position = null;
+
+  let cooldownRemaining = 0;
+
+  const strategyState = {
+    lastDirection: 0,
+  };
+
+  const trades = [];
+
+
+  // ==================================================
+  // CANDLE LOOP
   // ==================================================
 
   for (
@@ -44,7 +118,19 @@ function runBacktest(
     i < candles.length;
     i++
   ) {
-    const candle = candles[i];
+    const candle =
+      candles[i];
+
+
+    // ==================================================
+    // COOLDOWN
+    // ==================================================
+
+    if (
+      cooldownRemaining > 0
+    ) {
+      cooldownRemaining--;
+    }
 
 
     // ==================================================
@@ -52,163 +138,76 @@ function runBacktest(
     // ==================================================
 
     if (position) {
-      let exitPrice = null;
-      let exitReason = null;
+      let tpHit = false;
 
-
-      // ==================================================
-      // LONG POSITION
-      // ==================================================
+      // ----------------------------------------------
+      // LONG TP
+      // ----------------------------------------------
 
       if (
-        position.direction ===
-        "LONG"
+        position.direction === "LONG" &&
+        candle.high >=
+          position.takeProfit
       ) {
-        const hitSL =
-          candle.low <=
-          position.stopLoss;
-
-        const hitTP =
-          candle.high >=
-          position.takeProfit;
-
-
-        // ----------------------------------------------
-        // BOTH SL AND TP HIT
-        // ----------------------------------------------
-
-        if (hitSL && hitTP) {
-          // Conservative assumption:
-          // SL happened first.
-
-          exitPrice =
-            position.stopLoss;
-
-          exitReason =
-            "SL";
-        }
-
-        // ----------------------------------------------
-        // ONLY SL
-        // ----------------------------------------------
-
-        else if (hitSL) {
-          exitPrice =
-            position.stopLoss;
-
-          exitReason =
-            "SL";
-        }
-
-        // ----------------------------------------------
-        // ONLY TP
-        // ----------------------------------------------
-
-        else if (hitTP) {
-          exitPrice =
-            position.takeProfit;
-
-          exitReason =
-            "TP";
-        }
+        tpHit = true;
       }
 
 
-      // ==================================================
-      // SHORT POSITION
-      // ==================================================
+      // ----------------------------------------------
+      // SHORT TP
+      // ----------------------------------------------
 
       if (
-        position.direction ===
-        "SHORT"
+        position.direction === "SHORT" &&
+        candle.low <=
+          position.takeProfit
       ) {
-        const hitSL =
-          candle.high >=
-          position.stopLoss;
-
-        const hitTP =
-          candle.low <=
-          position.takeProfit;
-
-
-        // ----------------------------------------------
-        // BOTH SL AND TP HIT
-        // ----------------------------------------------
-
-        if (hitSL && hitTP) {
-          // Conservative assumption:
-          // SL happened first.
-
-          exitPrice =
-            position.stopLoss;
-
-          exitReason =
-            "SL";
-        }
-
-        // ----------------------------------------------
-        // ONLY SL
-        // ----------------------------------------------
-
-        else if (hitSL) {
-          exitPrice =
-            position.stopLoss;
-
-          exitReason =
-            "SL";
-        }
-
-        // ----------------------------------------------
-        // ONLY TP
-        // ----------------------------------------------
-
-        else if (hitTP) {
-          exitPrice =
-            position.takeProfit;
-
-          exitReason =
-            "TP";
-        }
+        tpHit = true;
       }
 
 
-      // ==================================================
-      // CLOSE POSITION
-      // ==================================================
+      // ----------------------------------------------
+      // TP EXIT
+      // ----------------------------------------------
 
-      if (exitPrice !== null) {
-        const priceDifference =
-          position.direction ===
-          "LONG"
-            ? exitPrice -
+      if (tpHit) {
+        const exitPrice =
+          position.takeProfit;
+
+        let pnl;
+
+
+        if (
+          position.direction === "LONG"
+        ) {
+          pnl =
+            (
+              exitPrice -
               position.entry
-            : position.entry -
-              exitPrice;
-
-
-        const pnl =
-          priceDifference *
-          position.positionSize;
+            ) *
+            position.quantity;
+        } else {
+          pnl =
+            (
+              position.entry -
+              exitPrice
+            ) *
+            position.quantity;
+        }
 
 
         balance += pnl;
 
 
         trades.push({
-          entryCandle:
-            position.entryCandle,
-
-          exitCandle:
-            i,
+          direction:
+            position.direction,
 
           entryTime:
             position.entryTime,
 
           exitTime:
             candle.time,
-
-          direction:
-            position.direction,
 
           entry:
             position.entry,
@@ -217,87 +216,112 @@ function runBacktest(
             exitPrice,
 
           stopLoss:
-            position.stopLoss,
+            null,
 
           takeProfit:
             position.takeProfit,
 
-          positionSize:
-            position.positionSize,
-
-          riskAmount:
-            position.riskAmount,
+          result:
+            pnl >= 0
+              ? "WIN"
+              : "LOSS",
 
           pnl,
 
-          result:
-            exitReason,
-
-          exitType:
-            "INTRABAR",
+          exitReason:
+            "TP",
         });
 
 
         position = null;
+
+
+        // Cooldown starts only
+        // after TP.
+
+        cooldownRemaining =
+          Number(settings.cooldown);
+
+        continue;
       }
     }
 
 
     // ==================================================
-    // UPDATE EQUITY
+    // NO POSITION
     // ==================================================
 
-    if (
-      balance >
-      peakBalance
-    ) {
-      peakBalance =
-        balance;
-    }
+    if (!position) {
+      if (
+        cooldownRemaining > 0
+      ) {
+        continue;
+      }
 
 
-    const drawdown =
-      peakBalance > 0
-        ? (
-            (peakBalance -
-              balance) /
-            peakBalance
-          ) * 100
-        : 0;
+      const signal =
+        getSignal(
+          candles,
+          i,
+          indicators,
+          settings,
+          strategyState
+        );
 
 
-    if (
-      drawdown >
-      maxDrawdown
-    ) {
-      maxDrawdown =
-        drawdown;
-    }
+      if (!signal) {
+        continue;
+      }
 
 
-    equityCurve.push({
-      candle: i,
-
-      time:
-        candle.time,
-
-      balance,
-
-      drawdown,
-    });
+      const positionSize =
+        Number(
+          settings.positionSize
+        );
 
 
-    // ==================================================
-    // DON'T ENTER WHILE POSITION EXISTS
-    // ==================================================
+      if (
+        positionSize <= 0
+      ) {
+        throw new Error(
+          "Position size must be greater than 0"
+        );
+      }
 
-    if (position) {
+
+      const quantity =
+        positionSize /
+        signal.entry;
+
+
+      position = {
+        direction:
+          signal.direction,
+
+        entry:
+          signal.entry,
+
+        entryTime:
+          candle.time,
+
+        quantity,
+
+        positionSize,
+
+        atr:
+          signal.atr,
+
+        takeProfit:
+          signal.takeProfit,
+      };
+
+
       continue;
     }
 
 
     // ==================================================
-    // GET STRATEGY SIGNAL
+    // OPPOSITE SIGNAL / REVERSAL
     // ==================================================
 
     const signal =
@@ -305,7 +329,8 @@ function runBacktest(
         candles,
         i,
         indicators,
-        settings
+        settings,
+        strategyState
       );
 
 
@@ -315,174 +340,59 @@ function runBacktest(
 
 
     // ==================================================
-    // VALIDATE SIGNAL
+    // SAME DIRECTION
     // ==================================================
-
-    if (
-      signal.direction !==
-        "LONG" &&
-      signal.direction !==
-        "SHORT"
-    ) {
-      continue;
-    }
-
-
-    if (
-      !Number.isFinite(
-        signal.entry
-      ) ||
-      !Number.isFinite(
-        signal.stopLoss
-      )
-    ) {
-      continue;
-    }
-
-
-    // ==================================================
-    // ENTRY
-    // ==================================================
-
-    const entry =
-      signal.entry;
-
-    const stopLoss =
-      signal.stopLoss;
-
-
-    // ==================================================
-    // RISK DISTANCE
-    // ==================================================
-
-    const riskDistance =
-      Math.abs(
-        entry -
-          stopLoss
-      );
-
-
-    if (
-      riskDistance <= 0
-    ) {
-      continue;
-    }
-
-
-    // ==================================================
-    // MONEY RISK
-    // ==================================================
-
-    const riskAmount =
-      balance *
-      riskPercent;
-
-
-    // ==================================================
-    // POSITION SIZE
-    // ==================================================
-
-    const positionSize =
-      riskAmount /
-      riskDistance;
-
-
-    // ==================================================
-    // TAKE PROFIT
-    // ==================================================
-
-    let takeProfit;
-
 
     if (
       signal.direction ===
-      "LONG"
+      position.direction
     ) {
-      takeProfit =
-        entry +
-        riskDistance *
-          riskReward;
-    } else {
-      takeProfit =
-        entry -
-        riskDistance *
-          riskReward;
+      continue;
     }
 
 
     // ==================================================
-    // OPEN POSITION
+    // CLOSE CURRENT POSITION
     // ==================================================
 
-    position = {
-      direction:
-        signal.direction,
-
-      entry,
-
-      entryCandle: i,
-
-      entryTime:
-        candle.time,
-
-      stopLoss,
-
-      takeProfit,
-
-      positionSize,
-
-      riskAmount,
-    };
-  }
-
-
-  // ==================================================
-  // CLOSE OPEN POSITION AT END
-  // ==================================================
-
-  if (position) {
-    const lastCandle =
-      candles[
-        candles.length - 1
-      ];
-
-
     const exitPrice =
-      lastCandle.close;
+      signal.entry;
+
+    let pnl;
 
 
-    const priceDifference =
+    if (
       position.direction ===
       "LONG"
-        ? exitPrice -
+    ) {
+      pnl =
+        (
+          exitPrice -
           position.entry
-        : position.entry -
-          exitPrice;
-
-
-    const pnl =
-      priceDifference *
-      position.positionSize;
+        ) *
+        position.quantity;
+    } else {
+      pnl =
+        (
+          position.entry -
+          exitPrice
+        ) *
+        position.quantity;
+    }
 
 
     balance += pnl;
 
 
     trades.push({
-      entryCandle:
-        position.entryCandle,
-
-      exitCandle:
-        candles.length - 1,
+      direction:
+        position.direction,
 
       entryTime:
         position.entryTime,
 
       exitTime:
-        lastCandle.time,
-
-      direction:
-        position.direction,
+        candle.time,
 
       entry:
         position.entry,
@@ -491,42 +401,81 @@ function runBacktest(
         exitPrice,
 
       stopLoss:
-        position.stopLoss,
+        null,
 
       takeProfit:
         position.takeProfit,
 
-      positionSize:
-        position.positionSize,
-
-      riskAmount:
-        position.riskAmount,
+      result:
+        pnl >= 0
+          ? "WIN"
+          : "LOSS",
 
       pnl,
 
-      result:
-        "END",
-
-      exitType:
-        "END_OF_DATA",
+      exitReason:
+        "REVERSAL",
     });
+
+
+    // ==================================================
+    // OPEN OPPOSITE POSITION
+    // ==================================================
+
+    const positionSize =
+      Number(
+        settings.positionSize
+      );
+
+
+    const quantity =
+      positionSize /
+      signal.entry;
+
+
+    position = {
+      direction:
+        signal.direction,
+
+      entry:
+        signal.entry,
+
+      entryTime:
+        candle.time,
+
+      quantity,
+
+      positionSize,
+
+      atr:
+        signal.atr,
+
+      takeProfit:
+        signal.takeProfit,
+    };
   }
+
+
+  // ==================================================
+  // CLOSE REMAINING POSITION
+  // ==================================================
+  //
+  // There is no forced market close in the
+  // Pine strategy. Therefore we do NOT add
+  // the unfinished position to completed trades.
+  //
+  // ==================================================
 
 
   // ==================================================
   // STATISTICS
   // ==================================================
 
-  const totalTrades =
-    trades.length;
-
-
   const winners =
     trades.filter(
       (trade) =>
         trade.pnl > 0
     );
-
 
   const losers =
     trades.filter(
@@ -535,7 +484,22 @@ function runBacktest(
     );
 
 
-  const totalProfit =
+  const netProfit =
+    balance -
+    startingBalance;
+
+
+  const winRate =
+    trades.length === 0
+      ? 0
+      : (
+          winners.length /
+          trades.length
+        ) *
+        100;
+
+
+  const grossProfit =
     winners.reduce(
       (sum, trade) =>
         sum + trade.pnl,
@@ -543,7 +507,7 @@ function runBacktest(
     );
 
 
-  const totalLoss =
+  const grossLoss =
     Math.abs(
       losers.reduce(
         (sum, trade) =>
@@ -553,50 +517,32 @@ function runBacktest(
     );
 
 
-  const netProfit =
-    totalProfit -
-    totalLoss;
+  let profitFactor;
 
-
-  const winRate =
-    totalTrades > 0
-      ? (
-          winners.length /
-          totalTrades
-        ) * 100
-      : 0;
-
-
-  const profitFactor =
-    totalLoss > 0
-      ? totalProfit /
-        totalLoss
-      : totalProfit > 0
-      ? Infinity
-      : 0;
-
-
-  const returnPercent =
-    settings.balance > 0
-      ? (
-          netProfit /
-          settings.balance
-        ) * 100
-      : 0;
+  if (
+    grossLoss === 0
+  ) {
+    profitFactor =
+      grossProfit > 0
+        ? Infinity
+        : 0;
+  } else {
+    profitFactor =
+      grossProfit /
+      grossLoss;
+  }
 
 
   return {
-    startingBalance:
-      settings.balance,
+    startingBalance,
 
     endingBalance:
       balance,
 
     netProfit,
 
-    returnPercent,
-
-    totalTrades,
+    totalTrades:
+      trades.length,
 
     winners:
       winners.length,
@@ -608,15 +554,16 @@ function runBacktest(
 
     profitFactor,
 
-    maxDrawdown,
-
     trades,
-
-    equityCurve,
   };
 }
 
 
+// ======================================================
+// EXPORT
+// ======================================================
+
 module.exports = {
   runBacktest,
 };
+

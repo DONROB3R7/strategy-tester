@@ -4,15 +4,26 @@ function App() {
   const [settings, setSettings] = useState({
     symbol: "BTCUSDT",
     timeframe: "15m",
-    balance: 100,
-    risk: 1,
-    riskReward: 2,
-    cooldown: 0,
 
-    // KAMA settings
-    kamaLength: 200,
-    kamaFast: 2,
-    kamaSlow: 30,
+    balance: 100,
+    positionSize: 100,
+
+    smaLength: 25,
+    emaLength: 200,
+
+    keltnerLength: 10,
+    keltnerMultiplier: 2,
+
+    atrLength: 15,
+
+    stochasticLength: 10,
+    stochasticSmooth: 1,
+
+    macdFast: 4,
+    macdSlow: 34,
+    macdSignal: 5,
+
+    tpATRMultiplier: 15,
   });
 
   const [results, setResults] = useState(null);
@@ -24,17 +35,22 @@ function App() {
 
     const numericFields = [
       "balance",
-      "risk",
-      "riskReward",
-      "cooldown",
-      "kamaLength",
-      "kamaFast",
-      "kamaSlow",
+      "positionSize",
+      "smaLength",
+      "emaLength",
+      "keltnerLength",
+      "keltnerMultiplier",
+      "atrLength",
+      "stochasticLength",
+      "stochasticSmooth",
+      "macdFast",
+      "macdSlow",
+      "macdSignal",
+      "tpATRMultiplier",
     ];
 
     setSettings((previous) => ({
       ...previous,
-
       [name]: numericFields.includes(name)
         ? Number(value)
         : value,
@@ -51,11 +67,9 @@ function App() {
         "http://localhost:3001/api/backtest",
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify(settings),
         }
       );
@@ -63,23 +77,14 @@ function App() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(
-          data.error || "Backtest failed"
-        );
+        throw new Error(data.error || "Backtest failed");
       }
 
-      console.log(
-        "Backtest results:",
-        data.results
-      );
+      console.log("Backtest results:", data.results);
 
       setResults(data.results);
     } catch (error) {
-      console.error(
-        "Backtest error:",
-        error
-      );
-
+      console.error("Backtest error:", error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -87,25 +92,12 @@ function App() {
   }
 
   function formatPrice(value) {
-    if (
-      value === null ||
-      value === undefined ||
-      !Number.isFinite(Number(value))
-    ) {
-      return "-";
-    }
-
     return Number(value).toFixed(2);
   }
 
   function formatMoney(value) {
     const number = Number(value);
 
-    if (!Number.isFinite(number)) {
-      return "-";
-    }
-
-    // Prevent "-0.00"
     if (Math.abs(number) < 0.005) {
       return "$0.00";
     }
@@ -114,218 +106,238 @@ function App() {
   }
 
   function formatTime(timestamp) {
-    if (!timestamp) {
-      return "-";
-    }
-
-    return new Date(
-      timestamp
-    ).toLocaleString();
+    return new Date(timestamp).toLocaleString();
   }
 
   return (
     <div
       style={{
-        maxWidth: "1200px",
+        maxWidth: "1400px",
         margin: "0 auto",
         padding: "40px 20px",
-        fontFamily:
-          "Arial, sans-serif",
+        fontFamily: "Arial, sans-serif",
       }}
     >
       <h1>Strategy Tester</h1>
 
       <p>
-        Binance Futures backtesting
+        EMA200 + MACD + Stochastic + Keltner
       </p>
 
-      {/* ==================================================
-          SETTINGS
-          ================================================== */}
+      <h2 style={{ marginTop: "35px" }}>Market</h2>
+
+      <div style={sectionGridStyle}>
+        <Field
+          label="Symbol"
+          name="symbol"
+          value={settings.symbol}
+          onChange={handleChange}
+          type="select"
+          options={[
+            "BTCUSDT",
+            "ETHUSDT",
+            "SOLUSDT",
+            "BNBUSDT",
+          ]}
+        />
+
+        <Field
+          label="Timeframe"
+          name="timeframe"
+          value={settings.timeframe}
+          onChange={handleChange}
+          type="select"
+          options={[
+            "15m",
+            "1H",
+            "4H",
+            "1D",
+          ]}
+        />
+
+        <Field
+          label="Starting Balance ($)"
+          name="balance"
+          value={settings.balance}
+          onChange={handleChange}
+          type="number"
+        />
+
+        <Field
+          label="Position Size ($)"
+          name="positionSize"
+          value={settings.positionSize}
+          onChange={handleChange}
+          type="number"
+        />
+      </div>
+
+      <h2 style={{ marginTop: "35px" }}>
+        Moving Averages
+      </h2>
+
+      <div style={sectionGridStyle}>
+        <Field
+          label="SMA Length"
+          name="smaLength"
+          value={settings.smaLength}
+          onChange={handleChange}
+          type="number"
+        />
+
+        <Field
+          label="EMA Length"
+          name="emaLength"
+          value={settings.emaLength}
+          onChange={handleChange}
+          type="number"
+        />
+      </div>
+
+      <h2 style={{ marginTop: "35px" }}>
+        Keltner Channel
+      </h2>
+
+      <div style={sectionGridStyle}>
+        <Field
+          label="Length"
+          name="keltnerLength"
+          value={settings.keltnerLength}
+          onChange={handleChange}
+          type="number"
+        />
+
+        <Field
+          label="Multiplier"
+          name="keltnerMultiplier"
+          value={settings.keltnerMultiplier}
+          onChange={handleChange}
+          type="number"
+          step="0.1"
+        />
+      </div>
+
+      <h2 style={{ marginTop: "35px" }}>
+        ATR / Take Profit
+      </h2>
+
+      <div style={sectionGridStyle}>
+        <Field
+          label="ATR Length"
+          name="atrLength"
+          value={settings.atrLength}
+          onChange={handleChange}
+          type="number"
+        />
+
+        <Field
+          label="TP ATR Multiplier"
+          name="tpATRMultiplier"
+          value={settings.tpATRMultiplier}
+          onChange={handleChange}
+          type="number"
+          step="0.1"
+        />
+      </div>
+
+      <h2 style={{ marginTop: "35px" }}>
+        Stochastic
+      </h2>
+
+      <div style={sectionGridStyle}>
+        <Field
+          label="%K Length"
+          name="stochasticLength"
+          value={settings.stochasticLength}
+          onChange={handleChange}
+          type="number"
+        />
+
+        <Field
+          label="%K Smoothing"
+          name="stochasticSmooth"
+          value={settings.stochasticSmooth}
+          onChange={handleChange}
+          type="number"
+        />
+      </div>
+
+      <h2 style={{ marginTop: "35px" }}>
+        MACD
+      </h2>
+
+      <div style={sectionGridStyle}>
+        <Field
+          label="Fast Length"
+          name="macdFast"
+          value={settings.macdFast}
+          onChange={handleChange}
+          type="number"
+        />
+
+        <Field
+          label="Slow Length"
+          name="macdSlow"
+          value={settings.macdSlow}
+          onChange={handleChange}
+          type="number"
+        />
+
+        <Field
+          label="Signal Length"
+          name="macdSignal"
+          value={settings.macdSignal}
+          onChange={handleChange}
+          type="number"
+        />
+      </div>
 
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: "15px",
-          marginTop: "30px",
+          marginTop: "35px",
+          padding: "20px",
+          border: "1px solid #ddd",
+          borderRadius: "8px",
+          background: "#fafafa",
         }}
       >
-        {/* SYMBOL */}
+        <h3 style={{ marginTop: 0 }}>
+          Strategy Rules
+        </h3>
 
-        <div>
-          <label>Symbol</label>
+        <p>
+          <strong>LONG:</strong> Close above SMA
+          25 and EMA 200, inside the Keltner
+          Channel, MACD histogram below 0, and
+          Stochastic below 50.
+        </p>
 
-          <select
-            name="symbol"
-            value={settings.symbol}
-            onChange={handleChange}
-            style={inputStyle}
-          >
-            <option value="BTCUSDT">
-              BTCUSDT
-            </option>
+        <p>
+          <strong>SHORT:</strong> Close below SMA
+          25 and EMA 200, inside the Keltner
+          Channel, MACD histogram above 0, and
+          Stochastic above 50.
+        </p>
 
-            <option value="ETHUSDT">
-              ETHUSDT
-            </option>
+        <p>
+          <strong>Take Profit:</strong> ATR × TP
+          multiplier.
+        </p>
 
-            <option value="SOLUSDT">
-              SOLUSDT
-            </option>
+        <p>
+          <strong>Stop Loss:</strong> None.
+        </p>
 
-            <option value="BNBUSDT">
-              BNBUSDT
-            </option>
-          </select>
-        </div>
+        <p>
+          <strong>Opposite Signal:</strong> Close
+          the current position and open the
+          opposite position.
+        </p>
 
-        {/* TIMEFRAME */}
-
-        <div>
-          <label>Timeframe</label>
-
-          <select
-            name="timeframe"
-            value={settings.timeframe}
-            onChange={handleChange}
-            style={inputStyle}
-          >
-            <option value="15m">
-              15m
-            </option>
-
-            <option value="1H">
-              1H
-            </option>
-
-            <option value="4H">
-              4H
-            </option>
-
-            <option value="1D">
-              1D
-            </option>
-          </select>
-        </div>
-
-        {/* BALANCE */}
-
-        <div>
-          <label>Balance</label>
-
-          <input
-            type="number"
-            name="balance"
-            value={settings.balance}
-            onChange={handleChange}
-            min="0"
-            step="1"
-            style={inputStyle}
-          />
-        </div>
-
-        {/* RISK */}
-
-        <div>
-          <label>Risk %</label>
-
-          <input
-            type="number"
-            name="risk"
-            value={settings.risk}
-            onChange={handleChange}
-            min="0"
-            step="0.1"
-            style={inputStyle}
-          />
-        </div>
-
-        {/* RISK REWARD */}
-
-        <div>
-          <label>Risk / Reward</label>
-
-          <input
-            type="number"
-            name="riskReward"
-            value={settings.riskReward}
-            onChange={handleChange}
-            min="0.1"
-            step="0.1"
-            style={inputStyle}
-          />
-        </div>
-
-        {/* COOLDOWN */}
-
-        <div>
-          <label>Cooldown (bars)</label>
-
-          <input
-            type="number"
-            name="cooldown"
-            value={settings.cooldown}
-            onChange={handleChange}
-            min="0"
-            step="1"
-            style={inputStyle}
-          />
-        </div>
-
-        {/* KAMA LENGTH */}
-
-        <div>
-          <label>KAMA Length</label>
-
-          <input
-            type="number"
-            name="kamaLength"
-            value={settings.kamaLength}
-            onChange={handleChange}
-            min="1"
-            step="1"
-            style={inputStyle}
-          />
-        </div>
-
-        {/* KAMA FAST */}
-
-        <div>
-          <label>KAMA Fast</label>
-
-          <input
-            type="number"
-            name="kamaFast"
-            value={settings.kamaFast}
-            onChange={handleChange}
-            min="1"
-            step="1"
-            style={inputStyle}
-          />
-        </div>
-
-        {/* KAMA SLOW */}
-
-        <div>
-          <label>KAMA Slow</label>
-
-          <input
-            type="number"
-            name="kamaSlow"
-            value={settings.kamaSlow}
-            onChange={handleChange}
-            min="1"
-            step="1"
-            style={inputStyle}
-          />
-        </div>
+        <p style={{ marginBottom: 0 }}>
+          <strong>Cooldown:</strong> None.
+        </p>
       </div>
-
-      {/* ==================================================
-          RUN BUTTON
-          ================================================== */}
 
       <button
         onClick={runBacktest}
@@ -334,393 +346,154 @@ function App() {
           marginTop: "25px",
           padding: "12px 24px",
           fontSize: "16px",
-          cursor: loading
-            ? "not-allowed"
-            : "pointer",
+          cursor: loading ? "not-allowed" : "pointer",
         }}
       >
-        {loading
-          ? "Running..."
-          : "Run Backtest"}
+        {loading ? "Running..." : "Run Backtest"}
       </button>
-
-      {/* ==================================================
-          ERROR
-          ================================================== */}
 
       {error && (
         <div
           style={{
             marginTop: "20px",
             padding: "15px",
-            border:
-              "1px solid red",
+            border: "1px solid red",
+            borderRadius: "6px",
           }}
         >
-          <strong>
-            Error:
-          </strong>{" "}
-          {error}
+          <strong>Error:</strong> {error}
         </div>
       )}
 
-      {/* ==================================================
-          RESULTS
-          ================================================== */}
-
       {results && (
         <>
-          {/* ==================================================
-              STATISTICS
-              ================================================== */}
+          <div style={{ marginTop: "40px" }}>
+            <h2>Backtest Results</h2>
 
-          <div
-            style={{
-              marginTop: "40px",
-            }}
-          >
-            <h2>
-              Backtest Results
-            </h2>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: "15px",
-                marginTop: "20px",
-              }}
-            >
+            <div style={resultsGridStyle}>
               <ResultCard
                 title="Starting Balance"
-                value={formatMoney(
-                  results.startingBalance
-                )}
+                value={formatMoney(results.startingBalance)}
               />
 
               <ResultCard
                 title="Ending Balance"
-                value={formatMoney(
-                  results.endingBalance
-                )}
+                value={formatMoney(results.endingBalance)}
               />
 
               <ResultCard
                 title="Net Profit"
-                value={formatMoney(
-                  results.netProfit
-                )}
-              />
-
-              <ResultCard
-                title="Return"
-                value={`${Number(
-                  results.returnPercent
-                ).toFixed(2)}%`}
+                value={formatMoney(results.netProfit)}
               />
 
               <ResultCard
                 title="Total Trades"
-                value={
-                  results.totalTrades
-                }
+                value={results.totalTrades}
               />
 
               <ResultCard
                 title="Winners"
-                value={
-                  results.winners
-                }
+                value={results.winners}
               />
 
               <ResultCard
                 title="Losers"
-                value={
-                  results.losers
-                }
+                value={results.losers}
               />
 
               <ResultCard
                 title="Win Rate"
-                value={`${Number(
-                  results.winRate
-                ).toFixed(2)}%`}
+                value={`${Number(results.winRate).toFixed(2)}%`}
               />
 
               <ResultCard
                 title="Profit Factor"
                 value={
-                  results.profitFactor ===
-                  Infinity
+                  results.profitFactor === Infinity
                     ? "∞"
-                    : Number(
-                        results.profitFactor
-                      ).toFixed(2)
+                    : Number(results.profitFactor).toFixed(2)
                 }
-              />
-
-              <ResultCard
-                title="Max Drawdown"
-                value={`${Number(
-                  results.maxDrawdown
-                ).toFixed(2)}%`}
               />
             </div>
           </div>
 
-          {/* ==================================================
-              TRADE TABLE
-              ================================================== */}
-
-          <div
-            style={{
-              marginTop: "50px",
-            }}
-          >
+          <div style={{ marginTop: "50px" }}>
             <h2>Trades</h2>
 
-            {results.trades.length ===
-            0 ? (
-              <p>
-                No completed trades.
-              </p>
+            {!results.trades ||
+            results.trades.length === 0 ? (
+              <p>No completed trades.</p>
             ) : (
               <div
                 style={{
-                  overflowX:
-                    "auto",
+                  overflowX: "auto",
                   marginTop: "15px",
                 }}
               >
                 <table
                   style={{
                     width: "100%",
-                    borderCollapse:
-                      "collapse",
-                    minWidth:
-                      "1200px",
+                    borderCollapse: "collapse",
+                    minWidth: "1050px",
                   }}
                 >
                   <thead>
                     <tr>
-                      <th
-                        style={thStyle}
-                      >
-                        #
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Entry Candle
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Exit Candle
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Direction
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Entry Time
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Exit Time
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Entry
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Exit
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        SL
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        TP
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Result
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        Exit Type
-                      </th>
-
-                      <th
-                        style={thStyle}
-                      >
-                        P&L
-                      </th>
+                      <th style={thStyle}>#</th>
+                      <th style={thStyle}>Direction</th>
+                      <th style={thStyle}>Entry Time</th>
+                      <th style={thStyle}>Exit Time</th>
+                      <th style={thStyle}>Entry</th>
+                      <th style={thStyle}>Exit</th>
+                      <th style={thStyle}>TP</th>
+                      <th style={thStyle}>Result</th>
+                      <th style={thStyle}>Exit Reason</th>
+                      <th style={thStyle}>P&L</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {results.trades.map(
-                      (
-                        trade,
-                        index
-                      ) => (
-                        <tr
-                          key={index}
-                        >
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {index +
-                              1}
+                      (trade, index) => (
+                        <tr key={index}>
+                          <td style={tdStyle}>
+                            {index + 1}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {
-                              trade.entryCandle
-                            }
+                          <td style={tdStyle}>
+                            {trade.direction}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {
-                              trade.exitCandle
-                            }
+                          <td style={tdStyle}>
+                            {formatTime(trade.entryTime)}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {
-                              trade.direction
-                            }
+                          <td style={tdStyle}>
+                            {formatTime(trade.exitTime)}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {formatTime(
-                              trade.entryTime
-                            )}
+                          <td style={tdStyle}>
+                            {formatPrice(trade.entry)}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {formatTime(
-                              trade.exitTime
-                            )}
+                          <td style={tdStyle}>
+                            {formatPrice(trade.exit)}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {formatPrice(
-                              trade.entry
-                            )}
+                          <td style={tdStyle}>
+                            {formatPrice(trade.takeProfit)}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {formatPrice(
-                              trade.exit
-                            )}
+                          <td style={tdStyle}>
+                            {trade.result}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {formatPrice(
-                              trade.stopLoss
-                            )}
+                          <td style={tdStyle}>
+                            {trade.exitReason || "-"}
                           </td>
 
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {formatPrice(
-                              trade.takeProfit
-                            )}
-                          </td>
-
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {
-                              trade.result
-                            }
-                          </td>
-
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {
-                              trade.exitType ||
-                              "-"
-                            }
-                          </td>
-
-                          <td
-                            style={
-                              tdStyle
-                            }
-                          >
-                            {formatMoney(
-                              trade.pnl
-                            )}
+                          <td style={tdStyle}>
+                            {formatMoney(trade.pnl)}
                           </td>
                         </tr>
                       )
@@ -736,20 +509,54 @@ function App() {
   );
 }
 
-
-// ======================================================
-// RESULT CARD
-// ======================================================
-
-function ResultCard({
-  title,
+function Field({
+  label,
+  name,
   value,
+  onChange,
+  type,
+  options,
+  step,
 }) {
+  return (
+    <div>
+      <label>
+        {label}
+      </label>
+
+      {type === "select" ? (
+        <select
+          name={name}
+          value={value}
+          onChange={onChange}
+          style={inputStyle}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type="number"
+          name={name}
+          value={value}
+          onChange={onChange}
+          min="0"
+          step={step || "1"}
+          style={inputStyle}
+        />
+      )}
+    </div>
+  );
+}
+
+function ResultCard({ title, value }) {
   return (
     <div
       style={{
-        border:
-          "1px solid #ccc",
+        border: "1px solid #ccc",
         borderRadius: "8px",
         padding: "20px",
       }}
@@ -775,11 +582,6 @@ function ResultCard({
   );
 }
 
-
-// ======================================================
-// STYLES
-// ======================================================
-
 const inputStyle = {
   display: "block",
   width: "100%",
@@ -788,26 +590,32 @@ const inputStyle = {
   marginTop: "5px",
 };
 
+const sectionGridStyle = {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "15px",
+  marginTop: "20px",
+};
+
+const resultsGridStyle = {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "15px",
+  marginTop: "20px",
+};
 
 const thStyle = {
-  border:
-    "1px solid #ddd",
-
+  border: "1px solid #ddd",
   padding: "10px",
-
   textAlign: "left",
-
-  background:
-    "#f5f5f5",
+  background: "#f5f5f5",
 };
-
 
 const tdStyle = {
-  border:
-    "1px solid #ddd",
-
+  border: "1px solid #ddd",
   padding: "10px",
 };
-
 
 export default App;
