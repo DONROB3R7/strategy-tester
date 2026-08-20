@@ -60,7 +60,8 @@ body {
     ),
     var(--bg);
 
-  color: var(--text);
+  color:
+    var(--text);
 
   font-family:
     Inter,
@@ -121,6 +122,7 @@ select {
   color: var(--text);
 
   font-size: 34px;
+
   line-height: 1.1;
 
   letter-spacing: -0.04em;
@@ -333,12 +335,14 @@ select {
 }
 
 .help-text {
-  margin-top: 12px;
+  margin-top:
+    12px;
 
   color:
     var(--text-muted);
 
-  font-size: 13px;
+  font-size:
+    13px;
 }
 
 
@@ -355,26 +359,33 @@ select {
       minmax(220px, 1fr)
     );
 
-  gap: 15px;
+  gap:
+    15px;
 
-  margin-top: 18px;
+  margin-top:
+    18px;
 }
 
 .field {
-  min-width: 0;
+  min-width:
+    0;
 }
 
 .field label {
-  display: block;
+  display:
+    block;
 
-  margin-bottom: 7px;
+  margin-bottom:
+    7px;
 
   color:
     var(--text-soft);
 
-  font-size: 12px;
+  font-size:
+    12px;
 
-  font-weight: 800;
+  font-weight:
+    800;
 
   letter-spacing:
     0.03em;
@@ -385,9 +396,11 @@ select {
 
 .field input,
 .field select {
-  width: 100%;
+  width:
+    100%;
 
-  min-height: 44px;
+  min-height:
+    44px;
 
   padding:
     10px
@@ -406,7 +419,8 @@ select {
   color:
     var(--text);
 
-  outline: none;
+  outline:
+    none;
 
   transition:
     border-color 0.2s ease,
@@ -444,25 +458,32 @@ select {
 ============================================================ */
 
 .optimization-list {
-  display: flex;
+  display:
+    flex;
 
-  flex-direction: column;
+  flex-direction:
+    column;
 
-  gap: 10px;
+  gap:
+    10px;
 
-  margin-top: 18px;
+  margin-top:
+    18px;
 }
 
 .optimizer-row {
-  display: grid;
+  display:
+    grid;
 
   grid-template-columns:
     minmax(150px, 0.35fr)
     minmax(300px, 1fr);
 
-  align-items: center;
+  align-items:
+    center;
 
-  gap: 18px;
+  gap:
+    18px;
 
   padding:
     14px
@@ -496,63 +517,85 @@ select {
 }
 
 .optimizer-header {
-  display: flex;
+  display:
+    flex;
 
-  align-items: center;
+  align-items:
+    center;
 }
 
 .optimizer-header label {
-  display: inline-flex;
+  display:
+    inline-flex;
 
-  align-items: center;
+  align-items:
+    center;
 
-  gap: 10px;
+  gap:
+    10px;
 
   color:
     var(--text);
 
-  font-size: 14px;
+  font-size:
+    14px;
 
-  cursor: pointer;
+  cursor:
+    pointer;
 }
 
 .optimizer-header input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width:
+    18px;
 
-  margin: 0;
+  height:
+    18px;
+
+  margin:
+    0;
 
   accent-color:
     var(--accent);
 
-  cursor: pointer;
+  cursor:
+    pointer;
 }
 
 .range-fields {
-  display: grid;
+  display:
+    grid;
 
   grid-template-columns:
-    repeat(3, minmax(100px, 1fr));
+    repeat(
+      3,
+      minmax(100px, 1fr)
+    );
 
-  gap: 10px;
+  gap:
+    10px;
 }
 
 .range-fields > div {
-  min-width: 0;
+  min-width:
+    0;
 }
 
 .range-fields span,
 .fixed-value span {
-  display: block;
+  display:
+    block;
 
-  margin-bottom: 5px;
+  margin-bottom:
+    5px;
 
   color:
     var(--text-muted);
 
-  font-size: 11px;
+  font-size:
+    11px;
 
-  font-weight: 800;
+  font-weight:
+    800;
 
   letter-spacing:
     0.05em;
@@ -563,9 +606,11 @@ select {
 
 .range-fields input,
 .fixed-value input {
-  width: 100%;
+  width:
+    100%;
 
-  min-height: 40px;
+  min-height:
+    40px;
 
   padding:
     8px
@@ -584,7 +629,8 @@ select {
   color:
     var(--text);
 
-  outline: none;
+  outline:
+    none;
 
   transition:
     border-color 0.2s ease,
@@ -602,27 +648,133 @@ select {
 }
 
 .fixed-value {
-  max-width: 180px;
+  max-width:
+    180px;
 }
 
 
 /* ============================================================
-   BUTTON
+   OPTIMIZATION ESTIMATE
+============================================================ */
+
+.optimization-estimate {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  gap:
+    20px;
+
+  margin-top:
+    22px;
+
+  padding:
+    14px
+    16px;
+
+  border:
+    1px solid
+    #dbeafe;
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    linear-gradient(
+      135deg,
+      #eff6ff,
+      #f8fbff
+    );
+}
+
+.optimization-estimate > div:first-child {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    12px;
+}
+
+.optimization-estimate span {
+  color:
+    #475569;
+
+  font-size:
+    13px;
+
+  font-weight:
+    700;
+}
+
+.optimization-estimate strong {
+  color:
+    var(--accent);
+
+  font-size:
+    18px;
+
+  font-weight:
+    900;
+}
+
+.estimate-note {
+  color:
+    var(--text-muted);
+
+  font-size:
+    12px;
+}
+
+
+/* ============================================================
+   SIMULATION ACTIONS
+============================================================ */
+
+.simulation-actions {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    10px;
+
+  margin-top:
+    24px;
+}
+
+
+/* ============================================================
+   PRIMARY BUTTON
 ============================================================ */
 
 .primary-button {
-  display: inline-flex;
+  display:
+    inline-flex;
 
-  align-items: center;
+  align-items:
+    center;
 
-  justify-content: center;
+  justify-content:
+    center;
 
-  gap: 8px;
+  gap:
+    8px;
 
-  margin-top: 24px;
+  min-height:
+    44px;
 
   padding:
-    12px
+    11px
     20px;
 
   border:
@@ -642,11 +794,14 @@ select {
   color:
     #ffffff;
 
-  font-size: 14px;
+  font-size:
+    14px;
 
-  font-weight: 800;
+  font-weight:
+    800;
 
-  cursor: pointer;
+  cursor:
+    pointer;
 
   box-shadow:
     0 6px 18px
@@ -673,39 +828,121 @@ select {
 }
 
 .primary-button:disabled {
-  opacity: 0.55;
+  opacity:
+    0.55;
 
-  cursor: not-allowed;
+  cursor:
+    not-allowed;
 
-  box-shadow: none;
+  box-shadow:
+    none;
 }
 
 
 /* ============================================================
-   RESULTS HEADER
+   SECONDARY BUTTON
+============================================================ */
+
+.secondary-button {
+  display:
+    inline-flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  min-height:
+    44px;
+
+  padding:
+    10px
+    18px;
+
+  border:
+    1px solid
+    var(--border-strong);
+
+  border-radius:
+    10px;
+
+  background:
+    #ffffff;
+
+  color:
+    var(--text);
+
+  font-size:
+    14px;
+
+  font-weight:
+    800;
+
+  cursor:
+    pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background:
+    var(--surface-soft);
+
+  border-color:
+    var(--accent);
+
+  color:
+    var(--accent);
+
+  transform:
+    translateY(-1px);
+}
+
+.secondary-button:active:not(:disabled) {
+  transform:
+    translateY(1px);
+}
+
+.secondary-button:disabled {
+  opacity:
+    0.55;
+
+  cursor:
+    not-allowed;
+}
+
+
+/* ============================================================
+   RESULTS
 ============================================================ */
 
 .results-header {
-  display: flex;
+  display:
+    flex;
 
-  align-items: flex-start;
+  align-items:
+    flex-start;
 
-  justify-content: space-between;
+  justify-content:
+    space-between;
 
-  gap: 20px;
+  gap:
+    20px;
 }
 
 .results-header h2 {
-  margin-bottom: 5px;
+  margin-bottom:
+    5px;
 }
 
-
-/* ============================================================
-   RESULTS GRID
-============================================================ */
-
 .results-grid {
-  display: grid;
+  display:
+    grid;
 
   grid-template-columns:
     repeat(
@@ -713,13 +950,16 @@ select {
       minmax(170px, 1fr)
     );
 
-  gap: 12px;
+  gap:
+    12px;
 
-  margin-top: 20px;
+  margin-top:
+    20px;
 }
 
 .result-card {
-  min-width: 0;
+  min-width:
+    0;
 
   padding:
     16px;
@@ -755,14 +995,17 @@ select {
 }
 
 .result-card-title {
-  margin-bottom: 7px;
+  margin-bottom:
+    7px;
 
   color:
     var(--text-muted);
 
-  font-size: 11px;
+  font-size:
+    11px;
 
-  font-weight: 800;
+  font-weight:
+    800;
 
   letter-spacing:
     0.06em;
@@ -778,9 +1021,11 @@ select {
   color:
     var(--text);
 
-  font-size: 20px;
+  font-size:
+    20px;
 
-  font-weight: 800;
+  font-weight:
+    800;
 
   letter-spacing:
     -0.02em;
@@ -788,15 +1033,18 @@ select {
 
 
 /* ============================================================
-   TABLES
+   TABLE
 ============================================================ */
 
 .table-wrapper {
-  width: 100%;
+  width:
+    100%;
 
-  margin-top: 18px;
+  margin-top:
+    18px;
 
-  overflow-x: auto;
+  overflow-x:
+    auto;
 
   border:
     1px solid
@@ -813,9 +1061,11 @@ select {
 }
 
 table {
-  width: 100%;
+  width:
+    100%;
 
-  min-width: 1500px;
+  min-width:
+    1500px;
 
   border-collapse:
     separate;
@@ -932,22 +1182,22 @@ th[style*="cursor: pointer"]:hover {
   color:
     var(--green);
 
-  font-weight:
-    800;
-
   background:
     var(--green-soft);
+
+  font-weight:
+    800;
 }
 
 .profit-negative {
   color:
     var(--red);
 
-  font-weight:
-    800;
-
   background:
     var(--red-soft);
+
+  font-weight:
+    800;
 }
 
 .direction-long {
@@ -964,76 +1214,6 @@ th[style*="cursor: pointer"]:hover {
 
   font-weight:
     800;
-}
-
-
-/* ============================================================
-   RULES
-============================================================ */
-
-.rules-box {
-  margin-top:
-    32px;
-
-  padding:
-    20px;
-
-  border:
-    1px solid
-    var(--border);
-
-  border-radius:
-    var(--radius-md);
-
-  background:
-    var(--surface-soft);
-}
-
-.rules-box h3 {
-  margin-top:
-    0;
-}
-
-.rules-grid {
-  display: grid;
-
-  grid-template-columns:
-    repeat(
-      auto-fit,
-      minmax(220px, 1fr)
-    );
-
-  gap:
-    12px;
-}
-
-.rules-grid > div {
-  padding:
-    14px;
-
-  border:
-    1px solid
-    var(--border);
-
-  border-radius:
-    var(--radius-sm);
-
-  background:
-    #ffffff;
-}
-
-.rules-grid p {
-  margin-bottom:
-    0;
-
-  color:
-    var(--text-muted);
-
-  font-size:
-    13px;
-
-  line-height:
-    1.55;
 }
 
 
@@ -1167,7 +1347,8 @@ th[style*="cursor: pointer"]:hover {
     20px;
 
   padding:
-    14px 16px;
+    14px
+    16px;
 
   border:
     1px solid
@@ -1184,6 +1365,70 @@ th[style*="cursor: pointer"]:hover {
 
   font-size:
     14px;
+}
+
+
+/* ============================================================
+   EMPTY RESULTS
+============================================================ */
+
+.empty-results {
+  margin-top:
+    18px;
+
+  padding:
+    24px;
+
+  border:
+    1px dashed
+    var(--border-strong);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    var(--surface-soft);
+
+  color:
+    var(--text-muted);
+}
+
+.empty-results strong {
+  color:
+    var(--text);
+}
+
+.empty-results p {
+  margin:
+    6px 0 0;
+}
+
+
+/* ============================================================
+   SCROLLBAR
+============================================================ */
+
+.table-wrapper::-webkit-scrollbar {
+  height:
+    10px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background:
+    #f1f5f9;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  border-radius:
+    999px;
+
+  background:
+    #cbd5e1;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background:
+    #94a3b8;
 }
 
 
@@ -1262,12 +1507,18 @@ th[style*="cursor: pointer"]:hover {
 
   .range-fields {
     grid-template-columns:
-      repeat(3, minmax(0, 1fr));
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
   }
 
   .results-grid {
     grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
   }
 
   .result-card {
@@ -1280,9 +1531,25 @@ th[style*="cursor: pointer"]:hover {
       17px;
   }
 
-  .rules-grid {
-    grid-template-columns:
-      1fr;
+  .optimization-estimate {
+    flex-direction:
+      column;
+
+    align-items:
+      flex-start;
+  }
+
+  .simulation-actions {
+    flex-direction:
+      column;
+
+    align-items:
+      stretch;
+  }
+
+  .simulation-actions button {
+    width:
+      100%;
   }
 
 }
@@ -1300,37 +1567,10 @@ th[style*="cursor: pointer"]:hover {
       1fr;
   }
 
-  .primary-button {
+  .primary-button,
+  .secondary-button {
     width:
       100%;
   }
 
-}
-
-
-/* ============================================================
-   SCROLLBAR
-============================================================ */
-
-.table-wrapper::-webkit-scrollbar {
-  height:
-    10px;
-}
-
-.table-wrapper::-webkit-scrollbar-track {
-  background:
-    #f1f5f9;
-}
-
-.table-wrapper::-webkit-scrollbar-thumb {
-  border-radius:
-    999px;
-
-  background:
-    #cbd5e1;
-}
-
-.table-wrapper::-webkit-scrollbar-thumb:hover {
-  background:
-    #94a3b8;
 }

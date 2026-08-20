@@ -11,10 +11,6 @@ const {
 } = require("./optimizer");
 
 
-// ======================================================
-// DEBUG OPTIMIZER MODULE
-// ======================================================
-
 console.log(
   "OPTIMIZER MODULE LOADED:",
   require.resolve("./optimizer")
@@ -31,18 +27,10 @@ console.log(
 );
 
 
-// ======================================================
-// APP
-// ======================================================
-
 const app = express();
 
 const PORT = 3001;
 
-
-// ======================================================
-// MIDDLEWARE
-// ======================================================
 
 app.use(
   cors()
@@ -54,31 +42,21 @@ app.use(
 
 
 // ======================================================
-// SUPPORTED TIMEFRAMES
+// TIMEFRAMES
 // ======================================================
 
 const TIMEFRAME_MAP = {
 
   "1m": "1m",
-
   "5m": "5m",
-
   "15m": "15m",
-
   "1H": "1h",
-
   "4H": "4h",
-
   "12H": "12h",
-
   "1D": "1d",
 
 };
 
-
-// ======================================================
-// BINANCE INTERVAL
-// ======================================================
 
 function getBinanceInterval(
   timeframe
@@ -111,7 +89,7 @@ function normalizeCandles(
 ) {
 
   return data.map(
-    (candle) => ({
+    candle => ({
 
       time:
         candle[0],
@@ -169,7 +147,7 @@ function normalizeCandles(
 
 
 // ======================================================
-// FETCH HISTORICAL BINANCE CANDLES
+// FETCH FUTURES CANDLES
 // ======================================================
 
 async function fetchHistoricalCandles(
@@ -181,27 +159,16 @@ async function fetchHistoricalCandles(
   const candlesPerDay = {
 
     "1m": 1440,
-
     "3m": 480,
-
     "5m": 288,
-
     "15m": 96,
-
     "30m": 48,
-
     "1h": 24,
-
     "2h": 12,
-
     "4h": 6,
-
     "6h": 4,
-
     "8h": 3,
-
     "12h": 2,
-
     "1d": 1,
 
   };
@@ -246,10 +213,6 @@ async function fetchHistoricalCandles(
   let endTime =
     Date.now();
 
-
-  // ====================================================
-  // FETCH IN BATCHES
-  // ====================================================
 
   while (
     allCandles.length <
@@ -310,19 +273,12 @@ async function fetchHistoricalCandles(
     }
 
 
-    const batch =
-      normalizeCandles(
-        data
-      );
-
-
     allCandles.push(
-      ...batch
+      ...normalizeCandles(
+        data
+      )
     );
 
-
-    // Move backwards to the candle before
-    // the oldest candle we just received.
 
     endTime =
       data[0][0] - 1;
@@ -346,10 +302,6 @@ async function fetchHistoricalCandles(
   }
 
 
-  // ====================================================
-  // REMOVE DUPLICATES
-  // ====================================================
-
   const unique =
     new Map();
 
@@ -366,10 +318,6 @@ async function fetchHistoricalCandles(
 
   }
 
-
-  // ====================================================
-  // SORT OLDEST -> NEWEST
-  // ====================================================
 
   const sorted =
     Array.from(
@@ -404,9 +352,11 @@ app.get(
 
     res.json({
 
-      success: true,
+      success:
+        true,
 
-      status: "ok",
+      status:
+        "ok",
 
       message:
         "Strategy Tester API is running",
@@ -478,7 +428,8 @@ app.get(
 
       res.json({
 
-        success: true,
+        success:
+          true,
 
         symbol,
 
@@ -503,7 +454,8 @@ app.get(
 
       res.status(500).json({
 
-        success: false,
+        success:
+          false,
 
         error:
           error.message,
@@ -536,17 +488,14 @@ app.post(
         risk,
         riskReward,
         cooldown,
-      } = req.body;
+      } =
+        req.body;
 
 
       const interval =
         getBinanceInterval(
           timeframe
         );
-
-
-      const days =
-        60;
 
 
       const cleanSymbol =
@@ -558,6 +507,10 @@ app.post(
           .toUpperCase();
 
 
+      const days =
+        60;
+
+
       const candles =
         await fetchHistoricalCandles(
           cleanSymbol,
@@ -566,116 +519,24 @@ app.post(
         );
 
 
-      console.log("");
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        "BACKTEST"
-      );
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        `Coin: ${cleanSymbol}`
-      );
-
-      console.log(
-        `Timeframe: ${timeframe}`
-      );
-
-      console.log(
-        `Candles: ${candles.length}`
-      );
-
-
       const results =
         runBacktest(
           candles,
           {
 
             balance,
-
             risk,
-
             riskReward,
-
             cooldown,
 
           }
         );
 
 
-      console.log("");
-
-      console.log(
-        "BACKTEST RESULTS"
-      );
-
-      console.log(
-        "----------------"
-      );
-
-      console.log(
-        `Starting balance: $${Number(
-          results.startingBalance ?? 0
-        ).toFixed(4)}`
-      );
-
-      console.log(
-        `Ending balance:   $${Number(
-          results.endingBalance ?? 0
-        ).toFixed(4)}`
-      );
-
-      console.log(
-        `Net profit:       $${Number(
-          results.netProfit ?? 0
-        ).toFixed(4)}`
-      );
-
-      console.log(
-        `Trades:           ${
-          results.totalTrades ?? 0
-        }`
-      );
-
-      console.log(
-        `Winners:          ${
-          results.winners ?? 0
-        }`
-      );
-
-      console.log(
-        `Losers:           ${
-          results.losers ?? 0
-        }`
-      );
-
-      console.log(
-        `Win rate:         ${Number(
-          results.winRate ?? 0
-        ).toFixed(2)}%`
-      );
-
-      console.log(
-        `Profit factor:    ${
-          results.profitFactor === Infinity
-            ? "∞"
-            : Number(
-                results.profitFactor ?? 0
-              ).toFixed(4)
-        }`
-      );
-
-
       res.json({
 
-        success: true,
+        success:
+          true,
 
         symbol:
           cleanSymbol,
@@ -703,7 +564,8 @@ app.post(
 
       res.status(500).json({
 
-        success: false,
+        success:
+          false,
 
         error:
           error.message,
@@ -732,8 +594,10 @@ app.post(
       const {
         symbols,
         timeframe,
-        days: requestedDays,
-      } = req.body;
+        days:
+          requestedDays,
+      } =
+        req.body;
 
 
       const interval =
@@ -746,22 +610,6 @@ app.post(
         Number(
           requestedDays
         ) || 30;
-
-
-      if (
-        days <= 0
-      ) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error:
-            "Days must be greater than 0.",
-
-        });
-
-      }
 
 
       const symbolList =
@@ -785,6 +633,7 @@ app.post(
       let totalCompleted =
         0;
 
+
       const overallStart =
         Date.now();
 
@@ -794,7 +643,7 @@ app.post(
         of symbolList
       ) {
 
-        const cleanSymbol =
+        const symbol =
           String(
             rawSymbol
           )
@@ -802,44 +651,18 @@ app.post(
             .toUpperCase();
 
 
-        console.log("");
-
-        console.log(
-          "=================================================="
-        );
-
-        console.log(
-          `Optimizing ${cleanSymbol} ${timeframe} for ${days} days`
-        );
-
-        console.log(
-          "=================================================="
-        );
-
-
         const candles =
           await fetchHistoricalCandles(
-            cleanSymbol,
+            symbol,
             interval,
             days
           );
 
 
-        console.log(
-          `Fetched ${candles.length} candles`
-        );
-
-
-        // IMPORTANT:
-        //
-        // runOptimizer() is async because it uses
-        // worker threads.
-        //
-        // Therefore we MUST await it.
-
         const optimization =
           await runOptimizer(
             candles,
+
             {
 
               balance: 100,
@@ -858,20 +681,21 @@ app.post(
 
         totalCombinations +=
           Number(
-            optimization.totalCombinations ?? 0
+            optimization.totalCombinations ||
+            0
           );
 
 
         totalCompleted +=
           Number(
-            optimization.completed ?? 0
+            optimization.completed ||
+            0
           );
 
 
         results.push({
 
-          symbol:
-            cleanSymbol,
+          symbol,
 
           timeframe,
 
@@ -890,11 +714,8 @@ app.post(
             optimization.elapsedSeconds,
 
           results:
-            Array.isArray(
-              optimization.results
-            )
-              ? optimization.results
-              : [],
+            optimization.results ||
+            [],
 
         });
 
@@ -910,7 +731,8 @@ app.post(
 
       res.json({
 
-        success: true,
+        success:
+          true,
 
         symbols:
           symbolList,
@@ -942,7 +764,8 @@ app.post(
 
       res.status(500).json({
 
-        success: false,
+        success:
+          false,
 
         error:
           error.message,
@@ -956,19 +779,7 @@ app.post(
 
 
 // ======================================================
-// SIMULATION / RANGE OPTIMIZER
-// ======================================================
-//
-// Frontend sends:
-//
-// {
-//   symbol,
-//   timeframe,
-//   days,
-//   baseSettings,
-//   optimization
-// }
-//
+// SIMULATION
 // ======================================================
 
 app.post(
@@ -979,10 +790,6 @@ app.post(
   ) => {
 
     try {
-
-      // ==================================================
-      // READ REQUEST
-      // ==================================================
 
       const {
 
@@ -996,12 +803,9 @@ app.post(
 
         optimization,
 
-      } = req.body;
+      } =
+        req.body;
 
-
-      // ==================================================
-      // DEBUG REQUEST
-      // ==================================================
 
       console.log("");
 
@@ -1032,43 +836,31 @@ app.post(
         days
       );
 
-      console.log(
-        "Has baseSettings:",
-        Boolean(
-          baseSettings
-        )
-      );
 
-      console.log(
-        "Has optimization:",
-        Boolean(
-          optimization
-        )
-      );
+      const safeBaseSettings =
+        baseSettings &&
+        typeof baseSettings ===
+          "object"
+          ? baseSettings
+          : {};
 
 
-      console.log(
-        "Optimization request:"
-      );
+      const safeOptimization =
+        optimization &&
+        typeof optimization ===
+          "object"
+          ? optimization
+          : {};
 
-      console.log(
-        JSON.stringify(
-          optimization,
-          null,
-          2
-        )
-      );
-
-
-      // ==================================================
-      // VALIDATION
-      // ==================================================
 
       if (!symbol) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
 
-          success: false,
+          success:
+            false,
 
           error:
             "Symbol is required.",
@@ -1080,9 +872,12 @@ app.post(
 
       if (!timeframe) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
 
-          success: false,
+          success:
+            false,
 
           error:
             "Timeframe is required.",
@@ -1105,9 +900,12 @@ app.post(
         simulationDays <= 0
       ) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
 
-          success: false,
+          success:
+            false,
 
           error:
             "Days must be greater than 0.",
@@ -1116,32 +914,6 @@ app.post(
 
       }
 
-
-      // ==================================================
-      // SAFE SETTINGS
-      // ==================================================
-
-      const safeBaseSettings =
-        baseSettings &&
-        typeof baseSettings === "object"
-
-          ? baseSettings
-
-          : {};
-
-
-      const safeOptimization =
-        optimization &&
-        typeof optimization === "object"
-
-          ? optimization
-
-          : {};
-
-
-      // ==================================================
-      // CLEAN SYMBOL
-      // ==================================================
 
       const cleanSymbol =
         String(
@@ -1158,38 +930,7 @@ app.post(
 
 
       // ==================================================
-      // START
-      // ==================================================
-
-      console.log("");
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        "SIMULATION START"
-      );
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        `Coin:       ${cleanSymbol}`
-      );
-
-      console.log(
-        `Timeframe:  ${timeframe}`
-      );
-
-      console.log(
-        `Days:       ${simulationDays}`
-      );
-
-
-      // ==================================================
-      // FETCH CANDLES
+      // FETCH
       // ==================================================
 
       const candles =
@@ -1199,8 +940,6 @@ app.post(
           simulationDays
         );
 
-
-      console.log("");
 
       console.log(
         `Fetched ${candles.length} candles`
@@ -1220,16 +959,6 @@ app.post(
 
       // ==================================================
       // BUILD GRID
-      // ==================================================
-      //
-      // Frontend says "optimization".
-      //
-      // buildGrid() expects:
-      //
-      // optimize
-      //
-      // We translate it here.
-      //
       // ==================================================
 
       const grid =
@@ -1294,7 +1023,7 @@ app.post(
       );
 
       console.log(
-        "Stoch Smoothing:",
+        "Stoch Smooth:",
         grid.stochasticSmoothing
       );
 
@@ -1325,7 +1054,7 @@ app.post(
 
 
       // ==================================================
-      // EXPECTED COMBINATIONS
+      // COUNT
       // ==================================================
 
       const expectedCombinations =
@@ -1351,7 +1080,7 @@ app.post(
 
 
       // ==================================================
-      // BASE STRATEGY SETTINGS
+      // SETTINGS
       // ==================================================
 
       const optimizerSettings = {
@@ -1394,14 +1123,6 @@ app.post(
       // ==================================================
       // RUN OPTIMIZER
       // ==================================================
-      //
-      // IMPORTANT:
-      //
-      // THIS MUST HAVE "await".
-      //
-      // Worker optimizer returns a Promise.
-      //
-      // ==================================================
 
       console.log("");
 
@@ -1409,6 +1130,10 @@ app.post(
         "STARTING WORKER OPTIMIZER..."
       );
 
+
+      // IMPORTANT:
+      // await is required because runOptimizer()
+      // uses worker threads and returns a Promise.
 
       const simulation =
         await runOptimizer(
@@ -1418,54 +1143,14 @@ app.post(
           optimizerSettings,
 
           {
-
             grid,
-
           }
 
         );
 
 
       // ==================================================
-      // VERIFY OPTIMIZER RESULT
-      // ==================================================
-
-      console.log("");
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        "SERVER RECEIVED OPTIMIZER RESULT"
-      );
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        "Total combinations:",
-        simulation?.totalCombinations
-      );
-
-      console.log(
-        "Completed:",
-        simulation?.completed
-      );
-
-      console.log(
-        "Results:",
-        Array.isArray(
-          simulation?.results
-        )
-          ? simulation.results.length
-          : "NOT ARRAY"
-      );
-
-
-      // ==================================================
-      // SAFE VALUES
+      // RESULT
       // ==================================================
 
       const totalCombinations =
@@ -1497,9 +1182,35 @@ app.post(
           : [];
 
 
-      // ==================================================
-      // COMPLETE
-      // ==================================================
+      console.log("");
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "SERVER RECEIVED OPTIMIZER RESULT"
+      );
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "Total combinations:",
+        totalCombinations
+      );
+
+      console.log(
+        "Completed:",
+        completed
+      );
+
+      console.log(
+        "Results:",
+        simulationResults.length
+      );
+
 
       console.log("");
 
@@ -1520,38 +1231,26 @@ app.post(
       );
 
       console.log(
-        `Time: ${elapsedSeconds.toFixed(2)} seconds`
+        `Time: ${elapsedSeconds.toFixed(
+          2
+        )} seconds`
       );
 
       console.log(
-        `Returned results: ${simulationResults.length}`
+        `Returned results: ${
+          simulationResults.length
+        }`
       );
 
 
-      if (
-        simulationResults.length > 0
-      ) {
-
-        console.log("");
-
-        console.log(
-          "TOP RESULT:"
-        );
-
-        console.log(
-          simulationResults[0]
-        );
-
-      }
-
-
       // ==================================================
-      // SEND RESPONSE
+      // RESPONSE
       // ==================================================
 
       res.json({
 
-        success: true,
+        success:
+          true,
 
         symbol:
           cleanSymbol,
@@ -1598,9 +1297,12 @@ app.post(
       );
 
 
-      res.status(500).json({
+      res.status(
+        500
+      ).json({
 
-        success: false,
+        success:
+          false,
 
         error:
           error.message ||
@@ -1645,4 +1347,3 @@ app.listen(
 
   }
 );
-

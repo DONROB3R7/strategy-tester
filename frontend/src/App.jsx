@@ -16,7 +16,6 @@ function App() {
 
   // ==========================================================
   // RESULT TABLE SORT
-  // Default = highest number of trades first
   // ==========================================================
 
   const [resultSort, setResultSort] = useState({
@@ -44,32 +43,26 @@ function App() {
 
         source: "low",
 
-        emaLength: 285,
+        // Pine defaults
+        emaLength: 200,
+        smaLength: 25,
 
-        smaLength: 20,
+        keltnerLength: 10,
+        keltnerMultiplier: 2,
 
-        keltnerLength: 20,
-
-        keltnerMultiplier: 1,
-
-        atrLength: 10,
+        atrLength: 15,
 
         stochasticLength: 10,
+        stochasticSmoothing: 1,
 
-        stochasticSmoothing: 2,
-
-        macdFast: 6,
-
+        macdFast: 4,
         macdSlow: 34,
-
         macdSignal: 5,
 
-        tpAtr: 10,
-
-        slAtr: null,
+        tpAtr: 15,
+        slAtr: 3,
 
         margin: 3,
-
         leverage: 10,
 
         roundTripFee: 0.04,
@@ -77,6 +70,11 @@ function App() {
         cooldownBars: 0,
 
       },
+
+
+      // ======================================================
+      // OPTIMIZATION
+      // ======================================================
 
       optimize: {
 
@@ -89,32 +87,38 @@ function App() {
 
         smaLength: {
           enabled: false,
-          value: 20,
+          value: 25,
         },
 
         keltnerLength: {
           enabled: false,
-          value: 20,
+          value: 10,
         },
 
         keltnerMultiplier: {
           enabled: false,
-          value: 1,
+          value: 2,
         },
 
         atrLength: {
+          enabled: false,
+          value: 15,
+        },
+
+        // NEW
+        stochasticLength: {
           enabled: false,
           value: 10,
         },
 
         stochastic: {
           enabled: false,
-          value: 2,
+          value: 1,
         },
 
         macdFast: {
           enabled: false,
-          value: 6,
+          value: 4,
         },
 
         macdSlow: {
@@ -129,12 +133,12 @@ function App() {
 
         tpAtr: {
           enabled: false,
-          value: 10,
+          value: 15,
         },
 
         slAtr: {
           enabled: false,
-          value: null,
+          value: 3,
         },
 
       },
@@ -156,7 +160,7 @@ function App() {
 
 
   // ==========================================================
-  // DEBUG - CURRENT STATE
+  // DEBUG
   // ==========================================================
 
   useEffect(() => {
@@ -199,6 +203,11 @@ function App() {
     );
 
     console.log(
+      "Estimated combinations:",
+      calculateCombinationCount()
+    );
+
+    console.log(
       "=================================================="
     );
 
@@ -215,6 +224,7 @@ function App() {
       return;
     }
 
+
     const interval =
       setInterval(() => {
 
@@ -224,6 +234,7 @@ function App() {
 
       }, 1000);
 
+
     return () =>
       clearInterval(interval);
 
@@ -231,7 +242,7 @@ function App() {
 
 
   // ==========================================================
-  // UPDATE BASE SETTING
+  // UPDATE BASE
   // ==========================================================
 
   function updateBaseSetting(
@@ -245,6 +256,7 @@ function App() {
       value
     );
 
+
     setSimulationSettings(
       previous => ({
 
@@ -254,7 +266,8 @@ function App() {
 
           ...previous.baseSettings,
 
-          [name]: value,
+          [name]:
+            value,
 
         },
 
@@ -265,7 +278,7 @@ function App() {
 
 
   // ==========================================================
-  // UPDATE OPTIMIZER SETTING
+  // UPDATE OPTIMIZER
   // ==========================================================
 
   function updateOptimizerSetting(
@@ -316,7 +329,8 @@ function App() {
 
             ...previous.optimize[name],
 
-            [field]: value,
+            [field]:
+              value,
 
           },
 
@@ -349,7 +363,256 @@ function App() {
 
 
   // ==========================================================
-  // RESULT SORTING
+  // DEFAULT TEST
+  // ==========================================================
+
+  function loadDefaultTest() {
+
+    const defaultOptimize = {
+
+      emaLength: {
+        enabled: true,
+        from: 180,
+        to: 200,
+        step: 10,
+      },
+
+      smaLength: {
+        enabled: true,
+        from: 23,
+        to: 27,
+        step: 2,
+      },
+
+      keltnerLength: {
+        enabled: true,
+        from: 8,
+        to: 12,
+        step: 2,
+      },
+
+      keltnerMultiplier: {
+        enabled: true,
+        from: 1.8,
+        to: 2.2,
+        step: 0.2,
+      },
+
+      atrLength: {
+        enabled: true,
+        from: 13,
+        to: 17,
+        step: 2,
+      },
+
+      stochasticLength: {
+        enabled: true,
+        from: 8,
+        to: 12,
+        step: 2,
+      },
+
+      stochastic: {
+        enabled: true,
+        from: 1,
+        to: 3,
+        step: 1,
+      },
+
+      macdFast: {
+        enabled: true,
+        from: 2,
+        to: 6,
+        step: 2,
+      },
+
+      macdSlow: {
+        enabled: true,
+        from: 32,
+        to: 36,
+        step: 2,
+      },
+
+      macdSignal: {
+        enabled: true,
+        from: 4,
+        to: 6,
+        step: 1,
+      },
+
+      tpAtr: {
+        enabled: true,
+        from: 13,
+        to: 17,
+        step: 2,
+      },
+
+      slAtr: {
+        enabled: true,
+        from: 2,
+        to: 4,
+        step: 1,
+      },
+
+    };
+
+
+    setSimulationSettings(
+      previous => ({
+
+        ...previous,
+
+        optimize:
+          defaultOptimize,
+
+      })
+    );
+
+
+    console.log(
+      "DEFAULT TEST LOADED"
+    );
+
+    console.log(
+      JSON.stringify(
+        defaultOptimize,
+        null,
+        2
+      )
+    );
+
+  }
+
+
+  // ==========================================================
+  // COMBINATION COUNT
+  // ==========================================================
+
+  function calculateCombinationCount() {
+
+    const optimize =
+      simulationSettings.optimize;
+
+
+    function countValues(
+      setting
+    ) {
+
+      if (!setting) {
+        return 1;
+      }
+
+
+      if (
+        setting.enabled !== true
+      ) {
+
+        return 1;
+
+      }
+
+
+      const from =
+        Number(
+          setting.from
+        );
+
+
+      const to =
+        Number(
+          setting.to
+        );
+
+
+      const step =
+        Number(
+          setting.step
+        );
+
+
+      if (
+        !Number.isFinite(from) ||
+        !Number.isFinite(to) ||
+        !Number.isFinite(step) ||
+        step <= 0 ||
+        to < from
+      ) {
+
+        return 1;
+
+      }
+
+
+      return (
+        Math.floor(
+          (
+            to -
+            from
+          ) /
+          step
+        ) + 1
+      );
+
+    }
+
+
+    return (
+
+      countValues(
+        optimize.emaLength
+      ) *
+
+      countValues(
+        optimize.smaLength
+      ) *
+
+      countValues(
+        optimize.keltnerLength
+      ) *
+
+      countValues(
+        optimize.keltnerMultiplier
+      ) *
+
+      countValues(
+        optimize.atrLength
+      ) *
+
+      countValues(
+        optimize.stochasticLength
+      ) *
+
+      countValues(
+        optimize.stochastic
+      ) *
+
+      countValues(
+        optimize.macdFast
+      ) *
+
+      countValues(
+        optimize.macdSlow
+      ) *
+
+      countValues(
+        optimize.macdSignal
+      ) *
+
+      countValues(
+        optimize.tpAtr
+      ) *
+
+      countValues(
+        optimize.slAtr
+      )
+
+    );
+
+  }
+
+
+  // ==========================================================
+  // RESULT SORT
   // ==========================================================
 
   function handleResultSort(
@@ -381,7 +644,8 @@ function App() {
 
           field,
 
-          direction: "desc",
+          direction:
+            "desc",
 
         };
 
@@ -400,7 +664,9 @@ function App() {
   ) {
 
     if (
-      !Array.isArray(results)
+      !Array.isArray(
+        results
+      )
     ) {
 
       return [];
@@ -408,19 +674,25 @@ function App() {
     }
 
 
-    return [...results].sort(
-      (a, b) => {
+    return [
+      ...results
+    ].sort(
+      (
+        a,
+        b
+      ) => {
 
         let aValue =
-          a?.[resultSort.field];
+          a?.[
+            resultSort.field
+          ];
+
 
         let bValue =
-          b?.[resultSort.field];
+          b?.[
+            resultSort.field
+          ];
 
-
-        // --------------------------------------------------
-        // NULL / UNDEFINED
-        // --------------------------------------------------
 
         if (
           aValue === null ||
@@ -430,6 +702,7 @@ function App() {
           aValue = 0;
 
         }
+
 
         if (
           bValue === null ||
@@ -441,49 +714,51 @@ function App() {
         }
 
 
-        // --------------------------------------------------
-        // NUMBERS
-        // --------------------------------------------------
-
         const aNumber =
-          Number(aValue);
+          Number(
+            aValue
+          );
+
 
         const bNumber =
-          Number(bValue);
+          Number(
+            bValue
+          );
 
 
         if (
-          Number.isFinite(aNumber) &&
-          Number.isFinite(bNumber)
+          Number.isFinite(
+            aNumber
+          ) &&
+          Number.isFinite(
+            bNumber
+          )
         ) {
 
-          return resultSort.direction === "asc"
-            ? aNumber - bNumber
-            : bNumber - aNumber;
+          return (
+            resultSort.direction === "asc"
+              ? aNumber - bNumber
+              : bNumber - aNumber
+          );
 
         }
 
 
-        // --------------------------------------------------
-        // STRINGS
-        // --------------------------------------------------
-
-        const aString =
-          String(aValue);
-
-        const bString =
-          String(bValue);
-
-
         const comparison =
-          aString.localeCompare(
-            bString
+          String(
+            aValue
+          ).localeCompare(
+            String(
+              bValue
+            )
           );
 
 
-        return resultSort.direction === "asc"
-          ? comparison
-          : -comparison;
+        return (
+          resultSort.direction === "asc"
+            ? comparison
+            : -comparison
+        );
 
       }
     );
@@ -499,18 +774,22 @@ function App() {
 
     try {
 
-      setSimulationLoading(true);
+      setSimulationLoading(
+        true
+      );
 
-      setSimulationResults(null);
+      setSimulationResults(
+        null
+      );
 
-      setSimulationError(null);
+      setSimulationError(
+        null
+      );
 
-      setSimulationElapsed(0);
+      setSimulationElapsed(
+        0
+      );
 
-
-      // ======================================================
-      // BUILD PAYLOAD
-      // ======================================================
 
       const payload = {
 
@@ -530,21 +809,11 @@ function App() {
         baseSettings:
           simulationSettings.baseSettings,
 
-        // Frontend state:
-        // simulationSettings.optimize
-        //
-        // API property:
-        // optimization
-
         optimization:
           simulationSettings.optimize,
 
       };
 
-
-      // ======================================================
-      // DEBUG
-      // ======================================================
 
       console.log("");
 
@@ -561,37 +830,12 @@ function App() {
       );
 
       console.log(
-        "SYMBOL:",
-        payload.symbol
+        "Estimated combinations:",
+        calculateCombinationCount()
       );
 
       console.log(
-        "TIMEFRAME:",
-        payload.timeframe
-      );
-
-      console.log(
-        "DAYS:",
-        payload.days
-      );
-
-      console.log(
-        "OPTIMIZATION:"
-      );
-
-      console.log(
-        JSON.stringify(
-          payload.optimization,
-          null,
-          2
-        )
-      );
-
-      console.log(
-        "FULL PAYLOAD:"
-      );
-
-      console.log(
+        "PAYLOAD:",
         JSON.stringify(
           payload,
           null,
@@ -599,35 +843,18 @@ function App() {
         )
       );
 
-      console.log(
-        "=================================================="
-      );
-
-
-      // ======================================================
-      // CHECK PAYLOAD
-      // ======================================================
 
       if (
         !payload.optimization ||
-        typeof payload.optimization !== "object"
+        typeof payload.optimization !==
+          "object"
       ) {
 
         throw new Error(
-          "Optimization settings are missing from payload."
+          "Optimization settings are missing."
         );
 
       }
-
-
-      // ======================================================
-      // SEND REQUEST
-      // ======================================================
-
-      console.log(
-        "POST:",
-        `${API_URL}/api/simulate`
-      );
 
 
       const response =
@@ -635,7 +862,8 @@ function App() {
           `${API_URL}/api/simulate`,
           {
 
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
 
@@ -653,16 +881,6 @@ function App() {
         );
 
 
-      console.log(
-        "HTTP STATUS:",
-        response.status
-      );
-
-
-      // ======================================================
-      // CHECK CONTENT TYPE
-      // ======================================================
-
       const contentType =
         response.headers.get(
           "content-type"
@@ -679,78 +897,26 @@ function App() {
           await response.text();
 
 
-        console.error(
-          "NON JSON RESPONSE:",
-          text
-        );
-
-
         throw new Error(
           `API returned non-JSON response (${response.status}). ` +
-          `Check that the backend is running on ${API_URL}. ` +
-          `Response: ${text.slice(0, 300)}`
+          `Response: ${text.slice(
+            0,
+            300
+          )}`
         );
 
       }
 
 
-      // ======================================================
-      // READ RESPONSE
-      // ======================================================
-
       const data =
         await response.json();
 
 
-      console.log("");
-
       console.log(
-        "=================================================="
+        "SIMULATION RESPONSE:",
+        data
       );
 
-      console.log(
-        "SIMULATION RESPONSE"
-      );
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        "Success:",
-        data.success
-      );
-
-      console.log(
-        "Total combinations:",
-        data.totalCombinations
-      );
-
-      console.log(
-        "Completed:",
-        data.completed
-      );
-
-      console.log(
-        "Returned results:",
-        Array.isArray(data.results)
-          ? data.results.length
-          : "NOT ARRAY"
-      );
-
-      console.log(
-        "Results:",
-        data.results
-      );
-
-      console.log(
-        "=================================================="
-      );
-
-
-      // ======================================================
-      // API ERROR
-      // ======================================================
 
       if (
         !response.ok ||
@@ -765,34 +931,31 @@ function App() {
       }
 
 
-      // ======================================================
-      // VALIDATE RESULTS
-      // ======================================================
-
       if (
         !Array.isArray(
           data.results
         )
       ) {
 
-        console.error(
-          "BACKEND DID NOT RETURN AN ARRAY:",
-          data.results
-        );
-
         throw new Error(
-          "Backend returned an invalid results format."
+          "Backend returned invalid results."
         );
 
       }
 
 
-      // ======================================================
-      // STORE RESULTS
-      // ======================================================
+      console.log(
+        "Total combinations:",
+        data.totalCombinations
+      );
 
       console.log(
-        "SETTING RESULTS INTO REACT:",
+        "Completed:",
+        data.completed
+      );
+
+      console.log(
+        "Returned:",
         data.results.length
       );
 
@@ -801,23 +964,13 @@ function App() {
         data
       );
 
-
-    } catch (error) {
-
-      console.error(
-        "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      );
+    } catch (
+      error
+    ) {
 
       console.error(
-        "SIMULATION ERROR"
-      );
-
-      console.error(
+        "SIMULATION ERROR:",
         error
-      );
-
-      console.error(
-        "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       );
 
 
@@ -825,10 +978,11 @@ function App() {
         error.message
       );
 
-
     } finally {
 
-      setSimulationLoading(false);
+      setSimulationLoading(
+        false
+      );
 
     }
 
@@ -844,11 +998,15 @@ function App() {
   ) {
 
     const number =
-      Number(value);
+      Number(
+        value
+      );
 
 
     if (
-      !Number.isFinite(number)
+      !Number.isFinite(
+        number
+      )
     ) {
 
       return "$0.0000";
@@ -863,7 +1021,9 @@ function App() {
 
 
     return (
-      `${sign}$${number.toFixed(4)}`
+      `${sign}$${number.toFixed(
+        4
+      )}`
     );
 
   }
@@ -875,11 +1035,15 @@ function App() {
   ) {
 
     const number =
-      Number(value);
+      Number(
+        value
+      );
 
 
     if (
-      !Number.isFinite(number)
+      !Number.isFinite(
+        number
+      )
     ) {
 
       return "-";
@@ -899,11 +1063,15 @@ function App() {
   ) {
 
     const number =
-      Number(value);
+      Number(
+        value
+      );
 
 
     if (
-      !Number.isFinite(number)
+      !Number.isFinite(
+        number
+      )
     ) {
 
       return "-";
@@ -912,7 +1080,9 @@ function App() {
 
 
     return (
-      `${number.toFixed(2)}%`
+      `${number.toFixed(
+        2
+      )}%`
     );
 
   }
@@ -955,58 +1125,46 @@ function App() {
 
 
     return (
-      `${String(minutes).padStart(2, "0")}:` +
-      `${String(secs).padStart(2, "0")}`
+      `${String(
+        minutes
+      ).padStart(
+        2,
+        "0"
+      )}:` +
+
+      `${String(
+        secs
+      ).padStart(
+        2,
+        "0"
+      )}`
     );
 
   }
 
 
   // ==========================================================
-  // TOP 300 RESULTS
+  // TOP 300
   // ==========================================================
 
   const topResults =
     useMemo(() => {
 
       if (
-        !simulationResults
-      ) {
-
-        return [];
-
-      }
-
-
-      if (
+        !simulationResults ||
         !Array.isArray(
           simulationResults.results
         )
       ) {
 
-        console.error(
-          "simulationResults.results is not an array:",
-          simulationResults.results
-        );
-
         return [];
 
       }
 
 
-      const results =
-        sortResults(
-          simulationResults.results
-        );
-
-
-      console.log(
-        "TABLE RESULTS:",
-        results.length
-      );
-
-
-      return results.slice(
+      return sortResults(
+        simulationResults.results
+      ).slice(
         0,
         300
       );
@@ -1052,10 +1210,6 @@ function App() {
       </header>
 
 
-      {/* ======================================================
-          TABS
-      ====================================================== */}
-
       <div className="tabs">
 
         <button
@@ -1064,21 +1218,18 @@ function App() {
               ? "tab-button active"
               : "tab-button"
           }
-          onClick={() =>
-            setActiveTab("simulation")
+          onClick={
+            () =>
+              setActiveTab(
+                "simulation"
+              )
           }
         >
-
           Simulation
-
         </button>
 
       </div>
 
-
-      {/* ======================================================
-          SIMULATION
-      ====================================================== */}
 
       {activeTab === "simulation" && (
 
@@ -1091,8 +1242,10 @@ function App() {
             </h2>
 
             <p className="muted">
+
               Optimize only the parameters
               you select.
+
             </p>
 
 
@@ -1210,7 +1363,7 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={true}
+                integer
               />
 
 
@@ -1225,7 +1378,7 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={true}
+                integer
               />
 
 
@@ -1240,7 +1393,7 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={true}
+                integer
               />
 
 
@@ -1255,7 +1408,6 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={false}
               />
 
 
@@ -1270,12 +1422,31 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={true}
+                integer
               />
 
 
+              {/* NEW STOCH LENGTH */}
+
               <RangeOptimizer
-                label="Stoch"
+                label="Stoch Length"
+                name="stochasticLength"
+                setting={
+                  simulationSettings
+                    .optimize
+                    .stochasticLength
+                }
+                onChange={
+                  updateOptimizerSetting
+                }
+                integer
+              />
+
+
+              {/* STOCH SMOOTHING */}
+
+              <RangeOptimizer
+                label="Stoch Smooth"
                 name="stochastic"
                 setting={
                   simulationSettings
@@ -1285,7 +1456,7 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={true}
+                integer
               />
 
 
@@ -1300,7 +1471,7 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={true}
+                integer
               />
 
 
@@ -1315,7 +1486,7 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={true}
+                integer
               />
 
 
@@ -1330,7 +1501,7 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={true}
+                integer
               />
 
 
@@ -1345,7 +1516,6 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={false}
               />
 
 
@@ -1360,7 +1530,6 @@ function App() {
                 onChange={
                   updateOptimizerSetting
                 }
-                integer={false}
               />
 
             </div>
@@ -1446,24 +1615,74 @@ function App() {
 
 
             {/* ==================================================
-                RUN
+                ESTIMATE
             ================================================== */}
 
-            <button
-              className="primary-button"
-              disabled={
-                simulationLoading
-              }
-              onClick={
-                runSimulation
-              }
-            >
+            <div className="optimization-estimate">
 
-              {simulationLoading
-                ? "Simulation Running..."
-                : "Run Simulation"}
+              <div>
 
-            </button>
+                <span>
+                  Estimated combinations
+                </span>
+
+                <strong>
+                  {
+                    calculateCombinationCount()
+                      .toLocaleString()
+                  }
+                </strong>
+
+              </div>
+
+              <div className="estimate-note">
+
+                Based on the current optimizer
+                ranges.
+
+              </div>
+
+            </div>
+
+
+            {/* ==================================================
+                ACTIONS
+            ================================================== */}
+
+            <div className="simulation-actions">
+
+              <button
+                className="secondary-button"
+                disabled={
+                  simulationLoading
+                }
+                onClick={
+                  loadDefaultTest
+                }
+              >
+
+                Load Default Test
+
+              </button>
+
+
+              <button
+                className="primary-button"
+                disabled={
+                  simulationLoading
+                }
+                onClick={
+                  runSimulation
+                }
+              >
+
+                {simulationLoading
+                  ? "Simulation Running..."
+                  : "Run Simulation"}
+
+              </button>
+
+            </div>
 
           </section>
 
@@ -1533,10 +1752,6 @@ function App() {
 
             <>
 
-              {/* ==================================================
-                  SUMMARY
-              ================================================== */}
-
               <section className="panel">
 
                 <h2>
@@ -1571,7 +1786,8 @@ function App() {
                     title="Candles"
                     value={
                       Number(
-                        simulationResults.candles || 0
+                        simulationResults.candles ||
+                        0
                       ).toLocaleString()
                     }
                   />
@@ -1580,7 +1796,9 @@ function App() {
                     title="Total Tests"
                     value={
                       Number(
-                        simulationResults.totalCombinations || 0
+                        simulationResults
+                          .totalCombinations ||
+                        0
                       ).toLocaleString()
                     }
                   />
@@ -1589,7 +1807,9 @@ function App() {
                     title="Completed"
                     value={
                       Number(
-                        simulationResults.completed || 0
+                        simulationResults
+                          .completed ||
+                        0
                       ).toLocaleString()
                     }
                   />
@@ -1609,8 +1829,12 @@ function App() {
                     title="Elapsed"
                     value={
                       `${Number(
-                        simulationResults.elapsedSeconds || 0
-                      ).toFixed(2)}s`
+                        simulationResults
+                          .elapsedSeconds ||
+                        0
+                      ).toFixed(
+                        2
+                      )}s`
                     }
                   />
 
@@ -1618,10 +1842,6 @@ function App() {
 
               </section>
 
-
-              {/* ==================================================
-                  RESULTS TABLE
-              ================================================== */}
 
               <section className="panel">
 
@@ -1636,9 +1856,11 @@ function App() {
                     <p className="muted">
 
                       Showing{" "}
+
                       <strong>
                         {topResults.length}
                       </strong>
+
                       {" "}
                       returned results.
 
@@ -1656,9 +1878,16 @@ function App() {
 
                 {topResults.length === 0 ? (
 
-                  <div className="muted">
-                    The backend returned no results.
-                    Check the browser console for details.
+                  <div className="empty-results">
+
+                    <strong>
+                      No results returned.
+                    </strong>
+
+                    <p>
+                      Check the backend console.
+                    </p>
+
                   </div>
 
                 ) : (
@@ -1671,17 +1900,13 @@ function App() {
 
                         <tr>
 
-                          {/* RANK IS NOT SORTABLE */}
-
                           <th>
                             Rank
                           </th>
 
-
                           <th>
                             Coin
                           </th>
-
 
                           <SortableHeader
                             field="optimizationScore"
@@ -1692,7 +1917,6 @@ function App() {
                             }
                           />
 
-
                           <SortableHeader
                             field="netProfit"
                             label="Net P&L"
@@ -1701,7 +1925,6 @@ function App() {
                               handleResultSort
                             }
                           />
-
 
                           <SortableHeader
                             field="profitFactor"
@@ -1712,7 +1935,6 @@ function App() {
                             }
                           />
 
-
                           <SortableHeader
                             field="winRate"
                             label="Win Rate"
@@ -1721,7 +1943,6 @@ function App() {
                               handleResultSort
                             }
                           />
-
 
                           <SortableHeader
                             field="totalTrades"
@@ -1732,7 +1953,6 @@ function App() {
                             }
                           />
 
-
                           <SortableHeader
                             field="maxDrawdown"
                             label="Drawdown"
@@ -1741,7 +1961,6 @@ function App() {
                               handleResultSort
                             }
                           />
-
 
                           <SortableHeader
                             field="emaLength"
@@ -1752,7 +1971,6 @@ function App() {
                             }
                           />
 
-
                           <SortableHeader
                             field="smaLength"
                             label="SMA"
@@ -1762,11 +1980,9 @@ function App() {
                             }
                           />
 
-
                           <th>
                             Source
                           </th>
-
 
                           <SortableHeader
                             field="keltnerLength"
@@ -1777,7 +1993,6 @@ function App() {
                             }
                           />
 
-
                           <SortableHeader
                             field="keltnerMultiplier"
                             label="KC Mult"
@@ -1786,7 +2001,6 @@ function App() {
                               handleResultSort
                             }
                           />
-
 
                           <SortableHeader
                             field="atrLength"
@@ -1797,21 +2011,29 @@ function App() {
                             }
                           />
 
+                          {/* NEW */}
 
                           <SortableHeader
-                            field="stochasticSmoothing"
-                            label="Stoch"
+                            field="stochasticLength"
+                            label="Stoch Length"
                             sort={resultSort}
                             onSort={
                               handleResultSort
                             }
                           />
 
+                          <SortableHeader
+                            field="stochasticSmoothing"
+                            label="Stoch Smooth"
+                            sort={resultSort}
+                            onSort={
+                              handleResultSort
+                            }
+                          />
 
                           <th>
                             MACD
                           </th>
-
 
                           <SortableHeader
                             field="tpAtr"
@@ -1821,7 +2043,6 @@ function App() {
                               handleResultSort
                             }
                           />
-
 
                           <SortableHeader
                             field="slAtr"
@@ -1855,44 +2076,46 @@ function App() {
                                   result.keltnerLength,
                                   result.keltnerMultiplier,
                                   result.atrLength,
+                                  result.stochasticLength,
+                                  result.stochasticSmoothing,
                                   result.macdFast,
                                   result.macdSlow,
                                   result.macdSignal,
                                   result.tpAtr,
                                   result.slAtr,
-                                ].join("-")
+                                ].join(
+                                  "-"
+                                )
                               }
                             >
 
-                              {/* RANK */}
-
                               <td>
                                 <strong>
-                                  {index + 1}
+                                  {
+                                    index + 1
+                                  }
                                 </strong>
                               </td>
 
 
-                              {/* COIN */}
-
                               <td>
                                 {
-                                  simulationResults.symbol
+                                  simulationResults
+                                    .symbol
                                 }
                               </td>
 
 
-                              {/* SCORE */}
-
                               <td>
-                                {formatNumber(
-                                  result.optimizationScore,
-                                  4
-                                )}
+                                {
+                                  formatNumber(
+                                    result
+                                      .optimizationScore,
+                                    4
+                                  )
+                                }
                               </td>
 
-
-                              {/* NET P&L */}
 
                               <ProfitCell
                                 value={
@@ -1909,18 +2132,15 @@ function App() {
                               </ProfitCell>
 
 
-                              {/* PF */}
-
                               <td>
                                 {
                                   getProfitFactor(
-                                    result.profitFactor
+                                    result
+                                      .profitFactor
                                   )
                                 }
                               </td>
 
-
-                              {/* WIN RATE */}
 
                               <td>
                                 {
@@ -1931,8 +2151,6 @@ function App() {
                               </td>
 
 
-                              {/* TRADES */}
-
                               <td>
                                 <strong>
                                   {
@@ -1941,8 +2159,6 @@ function App() {
                                 </strong>
                               </td>
 
-
-                              {/* DRAWDOWN */}
 
                               <td>
                                 {
@@ -1953,16 +2169,12 @@ function App() {
                               </td>
 
 
-                              {/* EMA */}
-
                               <td>
                                 {
                                   result.emaLength
                                 }
                               </td>
 
-
-                              {/* SMA */}
 
                               <td>
                                 {
@@ -1971,16 +2183,12 @@ function App() {
                               </td>
 
 
-                              {/* SOURCE */}
-
                               <td>
                                 {
                                   result.source
                                 }
                               </td>
 
-
-                              {/* KC LENGTH */}
 
                               <td>
                                 {
@@ -1989,16 +2197,12 @@ function App() {
                               </td>
 
 
-                              {/* KC MULT */}
-
                               <td>
                                 {
                                   result.keltnerMultiplier
                                 }
                               </td>
 
-
-                              {/* ATR */}
 
                               <td>
                                 {
@@ -2007,7 +2211,14 @@ function App() {
                               </td>
 
 
-                              {/* STOCH */}
+                              {/* NEW */}
+
+                              <td>
+                                {
+                                  result.stochasticLength
+                                }
+                              </td>
+
 
                               <td>
                                 {
@@ -2015,8 +2226,6 @@ function App() {
                                 }
                               </td>
 
-
-                              {/* MACD */}
 
                               <td>
                                 {
@@ -2033,16 +2242,12 @@ function App() {
                               </td>
 
 
-                              {/* TP */}
-
                               <td>
                                 {
                                   result.tpAtr
                                 }
                               </td>
 
-
-                              {/* SL */}
 
                               <td>
                                 {
@@ -2115,9 +2320,14 @@ function SortableHeader({
         onSort(field)
       }
       style={{
-        cursor: "pointer",
-        userSelect: "none",
-        whiteSpace: "nowrap",
+        cursor:
+          "pointer",
+
+        userSelect:
+          "none",
+
+        whiteSpace:
+          "nowrap",
       }}
       title={
         `Sort by ${label}`
@@ -2174,11 +2384,15 @@ function RangeOptimizer({
 
 
     const number =
-      Number(value);
+      Number(
+        value
+      );
 
 
     if (
-      !Number.isFinite(number)
+      !Number.isFinite(
+        number
+      )
     ) {
 
       return "";
@@ -2217,6 +2431,7 @@ function RangeOptimizer({
         rawValue,
 
         value,
+
       }
     );
 
@@ -2419,16 +2634,24 @@ function Field({
       {type === "select" ? (
 
         <select
-          value={value}
-          onChange={onChange}
+          value={
+            value
+          }
+          onChange={
+            onChange
+          }
         >
 
           {options.map(
             option => (
 
               <option
-                key={option}
-                value={option}
+                key={
+                  option
+                }
+                value={
+                  option
+                }
               >
                 {option}
               </option>
@@ -2441,11 +2664,22 @@ function Field({
       ) : (
 
         <input
-          type={type}
-          value={value}
-          onChange={onChange}
-          min={min}
-          step={step || "1"}
+          type={
+            type
+          }
+          value={
+            value
+          }
+          onChange={
+            onChange
+          }
+          min={
+            min
+          }
+          step={
+            step ||
+            "1"
+          }
         />
 
       )}
@@ -2516,7 +2750,9 @@ function ProfitCell({
 }) {
 
   const number =
-    Number(value);
+    Number(
+      value
+    );
 
 
   const className =
@@ -2538,9 +2774,7 @@ function ProfitCell({
         className
       }
     >
-
       {children}
-
     </td>
 
   );
@@ -2576,4 +2810,3 @@ function ErrorBox({
 
 
 export default App;
-
