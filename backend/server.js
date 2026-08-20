@@ -12,6 +12,10 @@ const {
 
 
 console.log(
+  "=================================================="
+);
+
+console.log(
   "OPTIMIZER MODULE LOADED:",
   require.resolve("./optimizer")
 );
@@ -26,18 +30,28 @@ console.log(
   typeof buildGrid
 );
 
+console.log(
+  "=================================================="
+);
+
 
 const app = express();
 
 const PORT = 3001;
 
 
+// ======================================================
+// MIDDLEWARE
+// ======================================================
+
 app.use(
   cors()
 );
 
 app.use(
-  express.json()
+  express.json({
+    limit: "10mb",
+  })
 );
 
 
@@ -50,6 +64,7 @@ const TIMEFRAME_MAP = {
   "1m": "1m",
   "5m": "5m",
   "15m": "15m",
+  "30m": "30m",
   "1H": "1h",
   "4H": "4h",
   "12H": "12h",
@@ -57,6 +72,91 @@ const TIMEFRAME_MAP = {
 
 };
 
+
+// ======================================================
+// STAGED PARAMETER LIMITS
+// ======================================================
+
+const PARAMETER_LIMITS = {
+
+  emaLength: {
+    min: 5,
+    max: 1000,
+    integer: true,
+  },
+
+  smaLength: {
+    min: 2,
+    max: 500,
+    integer: true,
+  },
+
+  keltnerLength: {
+    min: 2,
+    max: 200,
+    integer: true,
+  },
+
+  keltnerMultiplier: {
+    min: 0.1,
+    max: 10,
+    integer: false,
+  },
+
+  atrLength: {
+    min: 2,
+    max: 200,
+    integer: true,
+  },
+
+  stochasticLength: {
+    min: 2,
+    max: 100,
+    integer: true,
+  },
+
+  stochasticSmoothing: {
+    min: 1,
+    max: 20,
+    integer: true,
+  },
+
+  macdFast: {
+    min: 1,
+    max: 100,
+    integer: true,
+  },
+
+  macdSlow: {
+    min: 2,
+    max: 300,
+    integer: true,
+  },
+
+  macdSignal: {
+    min: 1,
+    max: 100,
+    integer: true,
+  },
+
+  tpAtr: {
+    min: 0.1,
+    max: 100,
+    integer: false,
+  },
+
+  slAtr: {
+    min: 0.1,
+    max: 50,
+    integer: false,
+  },
+
+};
+
+
+// ======================================================
+// TIMEFRAME
+// ======================================================
 
 function getBinanceInterval(
   timeframe
@@ -92,7 +192,9 @@ function normalizeCandles(
     candle => ({
 
       time:
-        candle[0],
+        Number(
+          candle[0]
+        ),
 
       open:
         Number(
@@ -128,7 +230,9 @@ function normalizeCandles(
         ),
 
       trades:
-        candle[8],
+        Number(
+          candle[8]
+        ),
 
       takerBuyBaseVolume:
         Number(
@@ -149,6 +253,13 @@ function normalizeCandles(
 // ======================================================
 // FETCH FUTURES CANDLES
 // ======================================================
+//
+// Binance Futures endpoint:
+//
+// https://fapi.binance.com/fapi/v1/klines
+//
+// So these are FUTURES candles.
+// ======================================================
 
 async function fetchHistoricalCandles(
   symbol,
@@ -159,16 +270,27 @@ async function fetchHistoricalCandles(
   const candlesPerDay = {
 
     "1m": 1440,
+
     "3m": 480,
+
     "5m": 288,
+
     "15m": 96,
+
     "30m": 48,
+
     "1h": 24,
+
     "2h": 12,
+
     "4h": 6,
+
     "6h": 4,
+
     "8h": 3,
+
     "12h": 2,
+
     "1d": 1,
 
   };
@@ -233,7 +355,9 @@ async function fetchHistoricalCandles(
 
     const url =
       `https://fapi.binance.com/fapi/v1/klines` +
-      `?symbol=${encodeURIComponent(symbol)}` +
+      `?symbol=${encodeURIComponent(
+        symbol
+      )}` +
       `&interval=${interval}` +
       `&limit=${limit}` +
       `&endTime=${endTime}`;
@@ -252,7 +376,7 @@ async function fetchHistoricalCandles(
 
 
       throw new Error(
-        `Binance API error for ${symbol}: ` +
+        `Binance Futures API error for ${symbol}: ` +
         `${response.status} ${errorText}`
       );
 
@@ -307,8 +431,7 @@ async function fetchHistoricalCandles(
 
 
   for (
-    const candle
-    of allCandles
+    const candle of allCandles
   ) {
 
     unique.set(
@@ -335,6 +458,487 @@ async function fetchHistoricalCandles(
   return sorted.slice(
     -targetCandles
   );
+
+}
+
+
+// ======================================================
+// BASE SETTINGS
+// ======================================================
+
+function normalizeBaseSettings(
+  baseSettings
+) {
+
+  const base =
+    baseSettings &&
+    typeof baseSettings === "object"
+      ? baseSettings
+      : {};
+
+
+  return {
+
+    ...base,
+
+    balance:
+      Number(
+        base.balance ??
+        100
+      ),
+
+    source:
+      base.source ??
+      "low",
+
+    emaLength:
+      Number(
+        base.emaLength ??
+        200
+      ),
+
+    smaLength:
+      Number(
+        base.smaLength ??
+        25
+      ),
+
+    keltnerLength:
+      Number(
+        base.keltnerLength ??
+        10
+      ),
+
+    keltnerMultiplier:
+      Number(
+        base.keltnerMultiplier ??
+        2
+      ),
+
+    atrLength:
+      Number(
+        base.atrLength ??
+        15
+      ),
+
+    stochasticLength:
+      Number(
+        base.stochasticLength ??
+        10
+      ),
+
+    stochasticSmoothing:
+      Number(
+        base.stochasticSmoothing ??
+        1
+      ),
+
+    macdFast:
+      Number(
+        base.macdFast ??
+        4
+      ),
+
+    macdSlow:
+      Number(
+        base.macdSlow ??
+        34
+      ),
+
+    macdSignal:
+      Number(
+        base.macdSignal ??
+        5
+      ),
+
+    tpAtr:
+      Number(
+        base.tpAtr ??
+        15
+      ),
+
+    slAtr:
+      base.slAtr === null ||
+      base.slAtr === undefined
+        ? 3
+        : Number(
+            base.slAtr
+          ),
+
+    margin:
+      Number(
+        base.margin ??
+        3
+      ),
+
+    leverage:
+      Number(
+        base.leverage ??
+        10
+      ),
+
+    roundTripFee:
+      Number(
+        base.roundTripFee ??
+        0.04
+      ),
+
+    cooldownBars:
+      Number(
+        base.cooldownBars ??
+        0
+      ),
+
+  };
+
+}
+
+
+// ======================================================
+// BUILD RANGE
+// ======================================================
+
+function buildParameterRange(
+  parameter,
+  from,
+  to,
+  step
+) {
+
+  const limits =
+    PARAMETER_LIMITS[
+      parameter
+    ];
+
+
+  if (!limits) {
+
+    throw new Error(
+      `Unsupported optimization parameter: ${parameter}`
+    );
+
+  }
+
+
+  let start =
+    Number(
+      from
+    );
+
+  let end =
+    Number(
+      to
+    );
+
+  const increment =
+    Number(
+      step
+    );
+
+
+  if (
+    !Number.isFinite(start) ||
+    !Number.isFinite(end) ||
+    !Number.isFinite(increment) ||
+    increment <= 0
+  ) {
+
+    throw new Error(
+      `Invalid ${parameter} range.`
+    );
+
+  }
+
+
+  if (
+    end < start
+  ) {
+
+    throw new Error(
+      `${parameter}: To (${end}) must be greater than or equal to From (${start}).`
+    );
+
+  }
+
+
+  if (
+    start < limits.min ||
+    end > limits.max
+  ) {
+
+    throw new Error(
+      `${parameter} allowed range is ${limits.min} → ${limits.max}. ` +
+      `Received ${start} → ${end}.`
+    );
+
+  }
+
+
+  const values = [];
+
+
+  for (
+    let value = start;
+
+    value <=
+      end +
+      increment * 0.000001;
+
+    value += increment
+  ) {
+
+    let output =
+      Number(
+        value.toFixed(
+          10
+        )
+      );
+
+
+    if (
+      limits.integer
+    ) {
+
+      output =
+        Math.round(
+          output
+        );
+
+    }
+
+
+    values.push(
+      output
+    );
+
+  }
+
+
+  return [
+    ...new Set(
+      values
+    ),
+  ];
+
+}
+
+
+// ======================================================
+// BUILD ONE-PARAMETER GRID
+// ======================================================
+//
+// selectedValues contains the current best values.
+//
+// Example:
+//
+// selectedValues = {
+//
+//   emaLength: 405,
+//   smaLength: 20,
+//   ...
+//
+// }
+//
+// If parameter = "smaLength":
+//
+// SMA gets the range.
+// Everything else is fixed.
+//
+// ======================================================
+
+function buildStagedGrid({
+  parameter,
+  range,
+  baseSettings,
+  selectedValues,
+}) {
+
+  const base =
+    normalizeBaseSettings(
+      baseSettings
+    );
+
+
+  const selected =
+    selectedValues &&
+    typeof selectedValues === "object"
+      ? selectedValues
+      : {};
+
+
+  const fixed = {
+
+    emaLength:
+      Number(
+        selected.emaLength ??
+        base.emaLength
+      ),
+
+    smaLength:
+      Number(
+        selected.smaLength ??
+        base.smaLength
+      ),
+
+    source:
+      base.source,
+
+    keltnerLength:
+      Number(
+        selected.keltnerLength ??
+        base.keltnerLength
+      ),
+
+    keltnerMultiplier:
+      Number(
+        selected.keltnerMultiplier ??
+        base.keltnerMultiplier
+      ),
+
+    atrLength:
+      Number(
+        selected.atrLength ??
+        base.atrLength
+      ),
+
+    stochasticLength:
+      Number(
+        selected.stochasticLength ??
+        base.stochasticLength
+      ),
+
+    stochasticSmoothing:
+      Number(
+        selected.stochasticSmoothing ??
+        base.stochasticSmoothing
+      ),
+
+    macdFast:
+      Number(
+        selected.macdFast ??
+        base.macdFast
+      ),
+
+    macdSlow:
+      Number(
+        selected.macdSlow ??
+        base.macdSlow
+      ),
+
+    macdSignal:
+      Number(
+        selected.macdSignal ??
+        base.macdSignal
+      ),
+
+    tpAtr:
+      Number(
+        selected.tpAtr ??
+        base.tpAtr
+      ),
+
+    slAtr:
+      selected.slAtr === null
+        ? null
+        : Number(
+            selected.slAtr ??
+            base.slAtr
+          ),
+
+  };
+
+
+  return {
+
+    emaLength:
+      parameter === "emaLength"
+        ? range
+        : [
+            fixed.emaLength
+          ],
+
+    smaLength:
+      parameter === "smaLength"
+        ? range
+        : [
+            fixed.smaLength
+          ],
+
+    source: [
+      fixed.source
+    ],
+
+    keltnerLength:
+      parameter === "keltnerLength"
+        ? range
+        : [
+            fixed.keltnerLength
+          ],
+
+    keltnerMultiplier:
+      parameter === "keltnerMultiplier"
+        ? range
+        : [
+            fixed.keltnerMultiplier
+          ],
+
+    atrLength:
+      parameter === "atrLength"
+        ? range
+        : [
+            fixed.atrLength
+          ],
+
+    stochasticLength:
+      parameter === "stochasticLength"
+        ? range
+        : [
+            fixed.stochasticLength
+          ],
+
+    stochasticSmoothing:
+      parameter === "stochasticSmoothing"
+        ? range
+        : [
+            fixed.stochasticSmoothing
+          ],
+
+    macdFast:
+      parameter === "macdFast"
+        ? range
+        : [
+            fixed.macdFast
+          ],
+
+    macdSlow:
+      parameter === "macdSlow"
+        ? range
+        : [
+            fixed.macdSlow
+          ],
+
+    macdSignal:
+      parameter === "macdSignal"
+        ? range
+        : [
+            fixed.macdSignal
+          ],
+
+    tpAtr:
+      parameter === "tpAtr"
+        ? range
+        : [
+            fixed.tpAtr
+          ],
+
+    slAtr:
+      parameter === "slAtr"
+        ? range
+        : [
+            fixed.slAtr
+          ],
+
+  };
 
 }
 
@@ -370,6 +974,10 @@ app.get(
 // ======================================================
 // MARKET DATA
 // ======================================================
+//
+// OLD ENDPOINT PRESERVED.
+// Also uses Binance FUTURES.
+// ======================================================
 
 app.get(
   "/api/market-data",
@@ -396,7 +1004,9 @@ app.get(
 
       const url =
         `https://fapi.binance.com/fapi/v1/klines` +
-        `?symbol=${encodeURIComponent(symbol)}` +
+        `?symbol=${encodeURIComponent(
+          symbol
+        )}` +
         `&interval=${interval}` +
         `&limit=1000`;
 
@@ -409,8 +1019,13 @@ app.get(
 
       if (!response.ok) {
 
+        const errorText =
+          await response.text();
+
+
         throw new Error(
-          `Binance API error: ${response.status}`
+          `Binance Futures API error: ` +
+          `${response.status} ${errorText}`
         );
 
       }
@@ -430,6 +1045,9 @@ app.get(
 
         success:
           true,
+
+        market:
+          "BINANCE_USDT_FUTURES",
 
         symbol,
 
@@ -452,7 +1070,9 @@ app.get(
       );
 
 
-      res.status(500).json({
+      res.status(
+        500
+      ).json({
 
         success:
           false,
@@ -482,12 +1102,19 @@ app.post(
     try {
 
       const {
+
         symbol,
+
         timeframe,
+
         balance,
+
         risk,
+
         riskReward,
+
         cooldown,
+
       } =
         req.body;
 
@@ -525,8 +1152,11 @@ app.post(
           {
 
             balance,
+
             risk,
+
             riskReward,
+
             cooldown,
 
           }
@@ -562,7 +1192,9 @@ app.post(
       );
 
 
-      res.status(500).json({
+      res.status(
+        500
+      ).json({
 
         success:
           false,
@@ -579,7 +1211,10 @@ app.post(
 
 
 // ======================================================
-// MULTI-COIN OPTIMIZER
+// ORIGINAL MULTI-COIN OPTIMIZER
+// ======================================================
+//
+// PRESERVED.
 // ======================================================
 
 app.post(
@@ -592,10 +1227,14 @@ app.post(
     try {
 
       const {
+
         symbols,
+
         timeframe,
+
         days:
           requestedDays,
+
       } =
         req.body;
 
@@ -627,8 +1266,10 @@ app.post(
 
       const results = [];
 
+
       let totalCombinations =
         0;
+
 
       let totalCompleted =
         0;
@@ -651,6 +1292,21 @@ app.post(
             .toUpperCase();
 
 
+        console.log("");
+
+        console.log(
+          "=================================================="
+        );
+
+        console.log(
+          `MULTI-COIN OPTIMIZATION: ${symbol}`
+        );
+
+        console.log(
+          "=================================================="
+        );
+
+
         const candles =
           await fetchHistoricalCandles(
             symbol,
@@ -665,30 +1321,36 @@ app.post(
 
             {
 
-              balance: 100,
+              balance:
+                100,
 
-              margin: 3,
+              margin:
+                3,
 
-              leverage: 10,
+              leverage:
+                10,
 
-              roundTripFee: 0.04,
+              roundTripFee:
+                0.04,
 
-              cooldownBars: 0,
+              cooldownBars:
+                0,
 
             }
+
           );
 
 
         totalCombinations +=
           Number(
-            optimization.totalCombinations ||
+            optimization?.totalCombinations ??
             0
           );
 
 
         totalCompleted +=
           Number(
-            optimization.completed ||
+            optimization?.completed ??
             0
           );
 
@@ -705,16 +1367,19 @@ app.post(
             candles.length,
 
           totalCombinations:
-            optimization.totalCombinations,
+            optimization?.totalCombinations ??
+            0,
 
           completed:
-            optimization.completed,
+            optimization?.completed ??
+            0,
 
           elapsedSeconds:
-            optimization.elapsedSeconds,
+            optimization?.elapsedSeconds ??
+            0,
 
           results:
-            optimization.results ||
+            optimization?.results ||
             [],
 
         });
@@ -726,7 +1391,8 @@ app.post(
         (
           Date.now() -
           overallStart
-        ) / 1000;
+        ) /
+        1000;
 
 
       res.json({
@@ -762,7 +1428,9 @@ app.post(
       );
 
 
-      res.status(500).json({
+      res.status(
+        500
+      ).json({
 
         success:
           false,
@@ -779,7 +1447,12 @@ app.post(
 
 
 // ======================================================
-// SIMULATION
+// OLD FULL SIMULATION
+// ======================================================
+//
+// PRESERVED EXACT API:
+// POST /api/simulate
+//
 // ======================================================
 
 app.post(
@@ -805,52 +1478,6 @@ app.post(
 
       } =
         req.body;
-
-
-      console.log("");
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        "SIMULATION REQUEST"
-      );
-
-      console.log(
-        "=================================================="
-      );
-
-      console.log(
-        "Symbol:",
-        symbol
-      );
-
-      console.log(
-        "Timeframe:",
-        timeframe
-      );
-
-      console.log(
-        "Days:",
-        days
-      );
-
-
-      const safeBaseSettings =
-        baseSettings &&
-        typeof baseSettings ===
-          "object"
-          ? baseSettings
-          : {};
-
-
-      const safeOptimization =
-        optimization &&
-        typeof optimization ===
-          "object"
-          ? optimization
-          : {};
 
 
       if (!symbol) {
@@ -929,21 +1556,12 @@ app.post(
         );
 
 
-      // ==================================================
-      // FETCH
-      // ==================================================
-
       const candles =
         await fetchHistoricalCandles(
           cleanSymbol,
           interval,
           simulationDays
         );
-
-
-      console.log(
-        `Fetched ${candles.length} candles`
-      );
 
 
       if (
@@ -957,9 +1575,18 @@ app.post(
       }
 
 
-      // ==================================================
-      // BUILD GRID
-      // ==================================================
+      const safeBaseSettings =
+        normalizeBaseSettings(
+          baseSettings
+        );
+
+
+      const safeOptimization =
+        optimization &&
+        typeof optimization === "object"
+          ? optimization
+          : {};
+
 
       const grid =
         buildGrid({
@@ -973,14 +1600,463 @@ app.post(
         });
 
 
+      const expectedCombinations =
+        Object.values(
+          grid
+        ).reduce(
+          (
+            total,
+            values
+          ) =>
+            total *
+            (
+              Array.isArray(values)
+                ? values.length
+                : 1
+            ),
+          1
+        );
+
+
+      console.log("");
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "FULL SIMULATION"
+      );
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        `Coin:       ${cleanSymbol}`
+      );
+
+      console.log(
+        `Timeframe:  ${timeframe}`
+      );
+
+      console.log(
+        `Days:       ${simulationDays}`
+      );
+
+      console.log(
+        `Expected:   ${expectedCombinations}`
+      );
+
+
+      console.log(
+        "GRID:",
+        grid
+      );
+
+
+      const simulation =
+        await runOptimizer(
+          candles,
+
+          {
+
+            ...safeBaseSettings,
+
+          },
+
+          {
+
+            grid,
+
+          }
+
+        );
+
+
+      const simulationResults =
+        Array.isArray(
+          simulation?.results
+        )
+          ? simulation.results
+          : [];
+
+
+      res.json({
+
+        success:
+          true,
+
+        symbol:
+          cleanSymbol,
+
+        timeframe,
+
+        days:
+          simulationDays,
+
+        candles:
+          candles.length,
+
+        totalCombinations:
+          Number(
+            simulation?.totalCombinations ??
+            expectedCombinations
+          ),
+
+        completed:
+          Number(
+            simulation?.completed ??
+            0
+          ),
+
+        elapsedSeconds:
+          Number(
+            simulation?.elapsedSeconds ??
+            0
+          ),
+
+        results:
+          simulationResults,
+
+      });
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Simulation error:",
+        error
+      );
+
+
+      res.status(
+        500
+      ).json({
+
+        success:
+          false,
+
+        error:
+          error.message ||
+          "Simulation failed.",
+
+      });
+
+    }
+
+  }
+);
+
+
+// ======================================================
+// NEW STAGED OPTIMIZER
+// ======================================================
+//
+// ONE endpoint for ALL steps.
+//
+// App.jsx sends:
+//
+// {
+//   symbol,
+//   timeframe,
+//   days,
+//   parameter,
+//   from,
+//   to,
+//   step,
+//   baseSettings,
+//   selectedValues
+// }
+//
+// Example:
+//
+// parameter = "emaLength"
+//
+// Then only EMA changes.
+//
+// After best EMA is selected:
+//
+// selectedValues.emaLength = best EMA
+//
+// Next request:
+//
+// parameter = "smaLength"
+//
+// Then only SMA changes.
+//
+// ======================================================
+
+app.post(
+  "/api/optimize-step",
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+
+        symbol,
+
+        timeframe,
+
+        days,
+
+        parameter,
+
+        from,
+
+        to,
+
+        step,
+
+        baseSettings,
+
+        selectedValues,
+
+      } =
+        req.body;
+
+
       // ==================================================
-      // PRINT GRID
+      // VALIDATION
+      // ==================================================
+
+      if (!symbol) {
+
+        return res.status(
+          400
+        ).json({
+
+          success:
+            false,
+
+          error:
+            "Symbol is required.",
+
+        });
+
+      }
+
+
+      if (!timeframe) {
+
+        return res.status(
+          400
+        ).json({
+
+          success:
+            false,
+
+          error:
+            "Timeframe is required.",
+
+        });
+
+      }
+
+
+      if (
+        !PARAMETER_LIMITS[
+          parameter
+        ]
+      ) {
+
+        return res.status(
+          400
+        ).json({
+
+          success:
+            false,
+
+          error:
+            `Unknown staged parameter: ${parameter}`,
+
+        });
+
+      }
+
+
+      const simulationDays =
+        Number(
+          days
+        );
+
+
+      if (
+        !Number.isFinite(
+          simulationDays
+        ) ||
+        simulationDays <= 0
+      ) {
+
+        return res.status(
+          400
+        ).json({
+
+          success:
+            false,
+
+          error:
+            "Days must be greater than 0.",
+
+        });
+
+      }
+
+
+      // ==================================================
+      // RANGE
+      // ==================================================
+
+      const values =
+        buildParameterRange(
+          parameter,
+          from,
+          to,
+          step
+        );
+
+
+      if (
+        values.length === 0
+      ) {
+
+        throw new Error(
+          `No values generated for ${parameter}.`
+        );
+
+      }
+
+
+      // ==================================================
+      // SYMBOL / INTERVAL
+      // ==================================================
+
+      const cleanSymbol =
+        String(
+          symbol
+        )
+          .trim()
+          .toUpperCase();
+
+
+      const interval =
+        getBinanceInterval(
+          timeframe
+        );
+
+
+      // ==================================================
+      // LOG
       // ==================================================
 
       console.log("");
 
       console.log(
-        "SIMULATION PARAMETER GRID"
+        "=================================================="
+      );
+
+      console.log(
+        "STAGED OPTIMIZATION"
+      );
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        `Coin:       ${cleanSymbol}`
+      );
+
+      console.log(
+        `Timeframe:  ${timeframe}`
+      );
+
+      console.log(
+        `Days:       ${simulationDays}`
+      );
+
+      console.log(
+        `Parameter:  ${parameter}`
+      );
+
+      console.log(
+        `Range:      ${from} -> ${to}`
+      );
+
+      console.log(
+        `Step:       ${step}`
+      );
+
+      console.log(
+        `Tests:      ${values.length}`
+      );
+
+      console.log(
+        "Selected values:",
+        selectedValues
+      );
+
+
+      // ==================================================
+      // FETCH FUTURES CANDLES
+      // ==================================================
+
+      const candles =
+        await fetchHistoricalCandles(
+          cleanSymbol,
+          interval,
+          simulationDays
+        );
+
+
+      if (
+        candles.length === 0
+      ) {
+
+        throw new Error(
+          "No historical candles were returned."
+        );
+
+      }
+
+
+      console.log(
+        `Fetched ${candles.length} candles`
+      );
+
+
+      // ==================================================
+      // BUILD STAGED GRID
+      // ==================================================
+
+      const grid =
+        buildStagedGrid({
+
+          parameter,
+
+          range:
+            values,
+
+          baseSettings,
+
+          selectedValues,
+
+        });
+
+
+      // ==================================================
+      // LOG GRID
+      // ==================================================
+
+      console.log("");
+
+      console.log(
+        "STAGED GRID"
       );
 
       console.log(
@@ -1054,127 +2130,58 @@ app.post(
 
 
       // ==================================================
-      // COUNT
+      // OPTIMIZER SETTINGS
       // ==================================================
 
-      const expectedCombinations =
-        Object.values(
-          grid
-        ).reduce(
-          (
-            total,
-            values
-          ) =>
-            total *
-            values.length,
-          1
+      const optimizerSettings =
+        normalizeBaseSettings(
+          baseSettings
         );
 
 
-      console.log("");
-
-      console.log(
-        "EXPECTED COMBINATIONS:",
-        expectedCombinations
-      );
-
-
       // ==================================================
-      // SETTINGS
-      // ==================================================
-
-      const optimizerSettings = {
-
-        ...safeBaseSettings,
-
-        balance:
-          Number(
-            safeBaseSettings.balance ??
-            100
-          ),
-
-        margin:
-          Number(
-            safeBaseSettings.margin ??
-            3
-          ),
-
-        leverage:
-          Number(
-            safeBaseSettings.leverage ??
-            10
-          ),
-
-        roundTripFee:
-          Number(
-            safeBaseSettings.roundTripFee ??
-            0.04
-          ),
-
-        cooldownBars:
-          Number(
-            safeBaseSettings.cooldownBars ??
-            0
-          ),
-
-      };
-
-
-      // ==================================================
-      // RUN OPTIMIZER
+      // RUN WORKER OPTIMIZER
       // ==================================================
 
       console.log("");
 
       console.log(
-        "STARTING WORKER OPTIMIZER..."
+        "STARTING STAGED WORKER OPTIMIZER..."
       );
 
 
-      // IMPORTANT:
-      // await is required because runOptimizer()
-      // uses worker threads and returns a Promise.
+      const startedAt =
+        Date.now();
+
 
       const simulation =
         await runOptimizer(
-
           candles,
 
           optimizerSettings,
 
           {
+
             grid,
+
           }
 
         );
 
 
+      const localElapsed =
+        (
+          Date.now() -
+          startedAt
+        ) /
+        1000;
+
+
       // ==================================================
-      // RESULT
+      // RESULTS
       // ==================================================
 
-      const totalCombinations =
-        Number(
-          simulation?.totalCombinations ??
-          expectedCombinations
-        );
-
-
-      const completed =
-        Number(
-          simulation?.completed ??
-          0
-        );
-
-
-      const elapsedSeconds =
-        Number(
-          simulation?.elapsedSeconds ??
-          0
-        );
-
-
-      const simulationResults =
+      const results =
         Array.isArray(
           simulation?.results
         )
@@ -1182,35 +2189,30 @@ app.post(
           : [];
 
 
-      console.log("");
+      const totalCombinations =
+        Number(
+          simulation?.totalCombinations ??
+          values.length
+        );
 
-      console.log(
-        "=================================================="
-      );
 
-      console.log(
-        "SERVER RECEIVED OPTIMIZER RESULT"
-      );
+      const completed =
+        Number(
+          simulation?.completed ??
+          values.length
+        );
 
-      console.log(
-        "=================================================="
-      );
 
-      console.log(
-        "Total combinations:",
-        totalCombinations
-      );
+      const elapsedSeconds =
+        Number(
+          simulation?.elapsedSeconds ??
+          localElapsed
+        );
 
-      console.log(
-        "Completed:",
-        completed
-      );
 
-      console.log(
-        "Results:",
-        simulationResults.length
-      );
-
+      // ==================================================
+      // LOG RESULTS
+      // ==================================================
 
       console.log("");
 
@@ -1219,7 +2221,7 @@ app.post(
       );
 
       console.log(
-        "SIMULATION COMPLETE"
+        "STAGED OPTIMIZATION COMPLETE"
       );
 
       console.log(
@@ -1227,20 +2229,35 @@ app.post(
       );
 
       console.log(
-        `Tests: ${completed}/${totalCombinations}`
+        `Parameter:  ${parameter}`
       );
 
       console.log(
-        `Time: ${elapsedSeconds.toFixed(
-          2
-        )} seconds`
+        `Tests:      ${completed}/${totalCombinations}`
       );
 
       console.log(
-        `Returned results: ${
-          simulationResults.length
-        }`
+        `Returned:   ${results.length}`
       );
+
+      console.log(
+        `Time:       ${elapsedSeconds.toFixed(2)} seconds`
+      );
+
+
+      if (
+        results.length > 0
+      ) {
+
+        console.log(
+          "BEST RESULT:"
+        );
+
+        console.log(
+          results[0]
+        );
+
+      }
 
 
       // ==================================================
@@ -1252,6 +2269,14 @@ app.post(
         success:
           true,
 
+        staged:
+          true,
+
+        step:
+          null,
+
+        parameter,
+
         symbol:
           cleanSymbol,
 
@@ -1260,8 +2285,17 @@ app.post(
         days:
           simulationDays,
 
-        candles:
-          candles.length,
+        from:
+          Number(from),
+
+        to:
+          Number(to),
+
+        stepSize:
+          Number(step),
+
+        testedValues:
+          values.length,
 
         totalCombinations,
 
@@ -1269,8 +2303,10 @@ app.post(
 
         elapsedSeconds,
 
-        results:
-          simulationResults,
+        results,
+
+        selectedValues:
+          selectedValues || {},
 
       });
 
@@ -1285,7 +2321,7 @@ app.post(
       );
 
       console.error(
-        "SIMULATION ERROR"
+        "STAGED OPTIMIZATION ERROR"
       );
 
       console.error(
@@ -1306,7 +2342,7 @@ app.post(
 
         error:
           error.message ||
-          "Simulation failed.",
+          "Staged optimization failed.",
 
       });
 
@@ -1335,9 +2371,20 @@ app.listen(
     );
 
     console.log(
+      "Using Binance USDT-M Futures candles"
+    );
+
+    console.log(
       "Supported timeframes:",
       Object.keys(
         TIMEFRAME_MAP
+      ).join(", ")
+    );
+
+    console.log(
+      "Staged parameters:",
+      Object.keys(
+        PARAMETER_LIMITS
       ).join(", ")
     );
 
@@ -1347,3 +2394,4 @@ app.listen(
 
   }
 );
+

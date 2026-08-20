@@ -1,7 +1,249 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import "./App.css";
 
-const API_URL = "http://localhost:3001";
+
+const API_URL =
+  "http://localhost:3001";
+
+
+// ============================================================
+// SAFETY LIMIT
+// ============================================================
+
+const MAX_COMBINATIONS =
+  1_000_000;
+
+
+// ============================================================
+// CASCADE PARAMETERS
+// ============================================================
+//
+// Broad search happens automatically.
+// The numbers found here are NOT hardcoded.
+// They are discovered from the optimizer.
+//
+// ============================================================
+
+const CASCADE_PARAMETERS = [
+
+  {
+    key: "emaLength",
+    label: "EMA",
+
+    broadFrom: 5,
+    broadTo: 1000,
+    broadStep: 20,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "smaLength",
+    label: "SMA",
+
+    broadFrom: 2,
+    broadTo: 100,
+    broadStep: 2,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "keltnerLength",
+    label: "KC Length",
+
+    broadFrom: 2,
+    broadTo: 100,
+    broadStep: 5,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "keltnerMultiplier",
+    label: "KC Mult",
+
+    broadFrom: 0.1,
+    broadTo: 5,
+    broadStep: 0.2,
+
+    integer: false,
+
+    finalRange: 0.5,
+  },
+
+  {
+    key: "atrLength",
+    label: "ATR",
+
+    broadFrom: 2,
+    broadTo: 100,
+    broadStep: 5,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "stochasticLength",
+    label: "Stoch Length",
+
+    broadFrom: 2,
+    broadTo: 50,
+    broadStep: 5,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "stochasticSmoothing",
+    label: "Stoch Smooth",
+
+    broadFrom: 1,
+    broadTo: 10,
+    broadStep: 1,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "macdFast",
+    label: "MACD Fast",
+
+    broadFrom: 1,
+    broadTo: 50,
+    broadStep: 5,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "macdSlow",
+    label: "MACD Slow",
+
+    broadFrom: 2,
+    broadTo: 100,
+    broadStep: 10,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "macdSignal",
+    label: "MACD Signal",
+
+    broadFrom: 1,
+    broadTo: 50,
+    broadStep: 5,
+
+    integer: true,
+
+    finalRange: 5,
+  },
+
+  {
+    key: "tpAtr",
+    label: "TP ATR",
+
+    broadFrom: 0.1,
+    broadTo: 100,
+    broadStep: 5,
+
+    integer: false,
+
+    finalRange: 5,
+  },
+
+];
+
+
+// ============================================================
+// PARAMETER LIMITS
+// ============================================================
+
+const PARAMETER_LIMITS = {
+
+  emaLength: {
+    min: 5,
+    max: 1000,
+  },
+
+  smaLength: {
+    min: 2,
+    max: 500,
+  },
+
+  keltnerLength: {
+    min: 2,
+    max: 200,
+  },
+
+  keltnerMultiplier: {
+    min: 0.1,
+    max: 10,
+  },
+
+  atrLength: {
+    min: 2,
+    max: 200,
+  },
+
+  stochasticLength: {
+    min: 2,
+    max: 100,
+  },
+
+  stochasticSmoothing: {
+    min: 1,
+    max: 20,
+  },
+
+  macdFast: {
+    min: 1,
+    max: 100,
+  },
+
+  macdSlow: {
+    min: 2,
+    max: 300,
+  },
+
+  macdSignal: {
+    min: 1,
+    max: 100,
+  },
+
+  tpAtr: {
+    min: 0.1,
+    max: 100,
+  },
+
+  slAtr: {
+    min: 0.1,
+    max: 50,
+  },
+
+};
 
 
 // ============================================================
@@ -10,71 +252,100 @@ const API_URL = "http://localhost:3001";
 
 function App() {
 
-  const [activeTab, setActiveTab] =
-    useState("simulation");
-
-
   // ==========================================================
-  // RESULT TABLE SORT
+  // TAB
   // ==========================================================
 
-  const [resultSort, setResultSort] = useState({
-    field: "totalTrades",
-    direction: "desc",
-  });
+  const [
+    activeTab,
+    setActiveTab,
+  ] =
+    useState(
+      "simulation"
+    );
 
 
   // ==========================================================
   // SIMULATION SETTINGS
   // ==========================================================
 
-  const [simulationSettings, setSimulationSettings] =
+  const [
+    simulationSettings,
+    setSimulationSettings,
+  ] =
     useState({
 
-      symbol: "1000BONKUSDT",
+      symbol:
+        "1000BONKUSDT",
 
-      timeframe: "15m",
+      timeframe:
+        "15m",
 
-      days: 30,
+      days:
+        30,
 
       baseSettings: {
 
-        balance: 100,
+        balance:
+          100,
 
-        source: "low",
+        source:
+          "low",
 
-        // Pine defaults
-        emaLength: 200,
-        smaLength: 25,
+        emaLength:
+          200,
 
-        keltnerLength: 10,
-        keltnerMultiplier: 2,
+        smaLength:
+          25,
 
-        atrLength: 15,
+        keltnerLength:
+          10,
 
-        stochasticLength: 10,
-        stochasticSmoothing: 1,
+        keltnerMultiplier:
+          2,
 
-        macdFast: 4,
-        macdSlow: 34,
-        macdSignal: 5,
+        atrLength:
+          15,
 
-        tpAtr: 15,
-        slAtr: 3,
+        stochasticLength:
+          10,
 
-        margin: 3,
-        leverage: 10,
+        stochasticSmoothing:
+          1,
 
-        roundTripFee: 0.04,
+        macdFast:
+          4,
 
-        cooldownBars: 0,
+        macdSlow:
+          34,
+
+        macdSignal:
+          5,
+
+        tpAtr:
+          15,
+
+        slAtr:
+          3,
+
+        margin:
+          3,
+
+        leverage:
+          10,
+
+        roundTripFee:
+          0.04,
+
+        cooldownBars:
+          0,
 
       },
 
 
-      // ======================================================
-      // OPTIMIZATION
-      // ======================================================
+      // ========================================================
+      // ORIGINAL FULL OPTIMIZER
+      // ========================================================
 
       optimize: {
 
@@ -105,7 +376,6 @@ function App() {
           value: 15,
         },
 
-        // NEW
         stochasticLength: {
           enabled: false,
           value: 10,
@@ -146,116 +416,157 @@ function App() {
     });
 
 
-  const [simulationResults, setSimulationResults] =
-    useState(null);
+  // ==========================================================
+  // CASCADE
+  // ==========================================================
 
-  const [simulationLoading, setSimulationLoading] =
-    useState(false);
+  const [
+    cascadeRunning,
+    setCascadeRunning,
+  ] =
+    useState(
+      false
+    );
 
-  const [simulationError, setSimulationError] =
-    useState(null);
 
-  const [simulationElapsed, setSimulationElapsed] =
-    useState(0);
+  const [
+    cascadeProgress,
+    setCascadeProgress,
+  ] =
+    useState(
+      0
+    );
+
+
+  const [
+    cascadeResults,
+    setCascadeResults,
+  ] =
+    useState(
+      null
+    );
+
+
+  const [
+    cascadeError,
+    setCascadeError,
+  ] =
+    useState(
+      null
+    );
 
 
   // ==========================================================
-  // DEBUG
+  // FULL SIMULATION
   // ==========================================================
 
-  useEffect(() => {
-
-    console.log(
-      "=================================================="
+  const [
+    simulationResults,
+    setSimulationResults,
+  ] =
+    useState(
+      null
     );
 
-    console.log(
-      "CURRENT SIMULATION STATE"
+
+  const [
+    simulationLoading,
+    setSimulationLoading,
+  ] =
+    useState(
+      false
     );
 
-    console.log(
-      "=================================================="
+
+  const [
+    simulationError,
+    setSimulationError,
+  ] =
+    useState(
+      null
     );
 
-    console.log(
-      "Symbol:",
-      simulationSettings.symbol
+
+  const [
+    simulationElapsed,
+    setSimulationElapsed,
+  ] =
+    useState(
+      0
     );
 
-    console.log(
-      "Timeframe:",
-      simulationSettings.timeframe
-    );
 
-    console.log(
-      "Days:",
-      simulationSettings.days
-    );
+  // ==========================================================
+  // RESULT SORT
+  // ==========================================================
 
-    console.log(
-      "BASE SETTINGS:",
-      simulationSettings.baseSettings
-    );
+  const [
+    resultSort,
+    setResultSort,
+  ] =
+    useState({
 
-    console.log(
-      "OPTIMIZE SETTINGS:",
-      simulationSettings.optimize
-    );
+      field:
+        "totalTrades",
 
-    console.log(
-      "Estimated combinations:",
-      calculateCombinationCount()
-    );
+      direction:
+        "desc",
 
-    console.log(
-      "=================================================="
-    );
-
-  }, [simulationSettings]);
+    });
 
 
   // ==========================================================
   // TIMER
   // ==========================================================
 
-  useEffect(() => {
+  useEffect(
+    () => {
 
-    if (!simulationLoading) {
-      return;
-    }
+      if (
+        !simulationLoading &&
+        !cascadeRunning
+      ) {
+
+        return;
+
+      }
 
 
-    const interval =
-      setInterval(() => {
+      const interval =
+        setInterval(
+          () => {
 
-        setSimulationElapsed(
-          value => value + 1
+            setSimulationElapsed(
+              value =>
+                value + 1
+            );
+
+          },
+          1000
         );
 
-      }, 1000);
 
+      return () =>
+        clearInterval(
+          interval
+        );
 
-    return () =>
-      clearInterval(interval);
-
-  }, [simulationLoading]);
+    },
+    [
+      simulationLoading,
+      cascadeRunning,
+    ]
+  );
 
 
   // ==========================================================
-  // UPDATE BASE
+  // BASE SETTING
   // ==========================================================
 
   function updateBaseSetting(
     name,
     value
   ) {
-
-    console.log(
-      "BASE SETTING CHANGED:",
-      name,
-      value
-    );
-
 
     setSimulationSettings(
       previous => ({
@@ -278,7 +589,7 @@ function App() {
 
 
   // ==========================================================
-  // UPDATE OPTIMIZER
+  // OPTIMIZER SETTING
   // ==========================================================
 
   function updateOptimizerSetting(
@@ -287,21 +598,13 @@ function App() {
     value
   ) {
 
-    console.log(
-      "OPTIMIZER SETTING CHANGED:",
-      {
-        name,
-        field,
-        value,
-      }
-    );
-
-
     setSimulationSettings(
       previous => {
 
         if (
-          !previous.optimize[name]
+          !previous.optimize[
+            name
+          ]
         ) {
 
           console.error(
@@ -309,50 +612,31 @@ function App() {
             name
           );
 
-          console.error(
-            "Available parameters:",
-            Object.keys(
-              previous.optimize
-            )
-          );
-
           return previous;
 
         }
-
-
-        const updatedOptimize = {
-
-          ...previous.optimize,
-
-          [name]: {
-
-            ...previous.optimize[name],
-
-            [field]:
-              value,
-
-          },
-
-        };
-
-
-        console.log(
-          "NEW OPTIMIZE:",
-          JSON.stringify(
-            updatedOptimize,
-            null,
-            2
-          )
-        );
 
 
         return {
 
           ...previous,
 
-          optimize:
-            updatedOptimize,
+          optimize: {
+
+            ...previous.optimize,
+
+            [name]: {
+
+              ...previous.optimize[
+                name
+              ],
+
+              [field]:
+                value,
+
+            },
+
+          },
 
         };
 
@@ -363,414 +647,1101 @@ function App() {
 
 
   // ==========================================================
-  // DEFAULT TEST
+  // LOAD PINE DEFAULTS
   // ==========================================================
 
-  function loadDefaultTest() {
-
-    const defaultOptimize = {
-
-      emaLength: {
-        enabled: true,
-        from: 180,
-        to: 200,
-        step: 10,
-      },
-
-      smaLength: {
-        enabled: true,
-        from: 23,
-        to: 27,
-        step: 2,
-      },
-
-      keltnerLength: {
-        enabled: true,
-        from: 8,
-        to: 12,
-        step: 2,
-      },
-
-      keltnerMultiplier: {
-        enabled: true,
-        from: 1.8,
-        to: 2.2,
-        step: 0.2,
-      },
-
-      atrLength: {
-        enabled: true,
-        from: 13,
-        to: 17,
-        step: 2,
-      },
-
-      stochasticLength: {
-        enabled: true,
-        from: 8,
-        to: 12,
-        step: 2,
-      },
-
-      stochastic: {
-        enabled: true,
-        from: 1,
-        to: 3,
-        step: 1,
-      },
-
-      macdFast: {
-        enabled: true,
-        from: 2,
-        to: 6,
-        step: 2,
-      },
-
-      macdSlow: {
-        enabled: true,
-        from: 32,
-        to: 36,
-        step: 2,
-      },
-
-      macdSignal: {
-        enabled: true,
-        from: 4,
-        to: 6,
-        step: 1,
-      },
-
-      tpAtr: {
-        enabled: true,
-        from: 13,
-        to: 17,
-        step: 2,
-      },
-
-      slAtr: {
-        enabled: true,
-        from: 2,
-        to: 4,
-        step: 1,
-      },
-
-    };
-
+  function loadPineDefaults() {
 
     setSimulationSettings(
       previous => ({
 
         ...previous,
 
-        optimize:
-          defaultOptimize,
+        baseSettings: {
+
+          ...previous.baseSettings,
+
+          emaLength:
+            200,
+
+          smaLength:
+            25,
+
+          keltnerLength:
+            10,
+
+          keltnerMultiplier:
+            2,
+
+          atrLength:
+            15,
+
+          stochasticLength:
+            10,
+
+          stochasticSmoothing:
+            1,
+
+          macdFast:
+            4,
+
+          macdSlow:
+            34,
+
+          macdSignal:
+            5,
+
+          tpAtr:
+            15,
+
+          slAtr:
+            3,
+
+        },
+
+        optimize: {
+
+          ...previous.optimize,
+
+          emaLength: {
+            enabled:
+              true,
+
+            from:
+              180,
+
+            to:
+              350,
+
+            step:
+              1,
+          },
+
+          smaLength: {
+            enabled:
+              false,
+
+            value:
+              25,
+          },
+
+          keltnerLength: {
+            enabled:
+              false,
+
+            value:
+              10,
+          },
+
+          keltnerMultiplier: {
+            enabled:
+              false,
+
+            value:
+              2,
+          },
+
+          atrLength: {
+            enabled:
+              false,
+
+            value:
+              15,
+          },
+
+          stochasticLength: {
+            enabled:
+              false,
+
+            value:
+              10,
+          },
+
+          stochastic: {
+            enabled:
+              false,
+
+            value:
+              1,
+          },
+
+          macdFast: {
+            enabled:
+              false,
+
+            value:
+              4,
+          },
+
+          macdSlow: {
+            enabled:
+              false,
+
+            value:
+              34,
+          },
+
+          macdSignal: {
+            enabled:
+              false,
+
+            value:
+              5,
+          },
+
+          tpAtr: {
+            enabled:
+              false,
+
+            value:
+              15,
+          },
+
+          slAtr: {
+            enabled:
+              false,
+
+            value:
+              3,
+          },
+
+        },
 
       })
-    );
-
-
-    console.log(
-      "DEFAULT TEST LOADED"
-    );
-
-    console.log(
-      JSON.stringify(
-        defaultOptimize,
-        null,
-        2
-      )
     );
 
   }
 
 
   // ==========================================================
-  // COMBINATION COUNT
+  // HTTP JSON
   // ==========================================================
 
-  function calculateCombinationCount() {
+  async function postJSON(
+    endpoint,
+    payload
+  ) {
 
-    const optimize =
-      simulationSettings.optimize;
+    const response =
+      await fetch(
+        `${API_URL}${endpoint}`,
+        {
+
+          method:
+            "POST",
+
+          headers: {
+
+            "Content-Type":
+              "application/json",
+
+          },
+
+          body:
+            JSON.stringify(
+              payload
+            ),
+
+        }
+      );
 
 
-    function countValues(
-      setting
+    const contentType =
+      response.headers.get(
+        "content-type"
+      ) || "";
+
+
+    if (
+      !contentType.includes(
+        "application/json"
+      )
     ) {
 
-      if (!setting) {
-        return 1;
-      }
+      const text =
+        await response.text();
 
 
-      if (
-        setting.enabled !== true
-      ) {
-
-        return 1;
-
-      }
-
-
-      const from =
-        Number(
-          setting.from
-        );
-
-
-      const to =
-        Number(
-          setting.to
-        );
-
-
-      const step =
-        Number(
-          setting.step
-        );
-
-
-      if (
-        !Number.isFinite(from) ||
-        !Number.isFinite(to) ||
-        !Number.isFinite(step) ||
-        step <= 0 ||
-        to < from
-      ) {
-
-        return 1;
-
-      }
-
-
-      return (
-        Math.floor(
-          (
-            to -
-            from
-          ) /
-          step
-        ) + 1
+      throw new Error(
+        `API returned non-JSON response (${response.status}): ${text.slice(
+          0,
+          300
+        )}`
       );
 
     }
 
 
-    return (
+    const data =
+      await response.json();
 
-      countValues(
-        optimize.emaLength
-      ) *
-
-      countValues(
-        optimize.smaLength
-      ) *
-
-      countValues(
-        optimize.keltnerLength
-      ) *
-
-      countValues(
-        optimize.keltnerMultiplier
-      ) *
-
-      countValues(
-        optimize.atrLength
-      ) *
-
-      countValues(
-        optimize.stochasticLength
-      ) *
-
-      countValues(
-        optimize.stochastic
-      ) *
-
-      countValues(
-        optimize.macdFast
-      ) *
-
-      countValues(
-        optimize.macdSlow
-      ) *
-
-      countValues(
-        optimize.macdSignal
-      ) *
-
-      countValues(
-        optimize.tpAtr
-      ) *
-
-      countValues(
-        optimize.slAtr
-      )
-
-    );
-
-  }
-
-
-  // ==========================================================
-  // RESULT SORT
-  // ==========================================================
-
-  function handleResultSort(
-    field
-  ) {
-
-    setResultSort(
-      previous => {
-
-        if (
-          previous.field === field
-        ) {
-
-          return {
-
-            field,
-
-            direction:
-              previous.direction === "desc"
-                ? "asc"
-                : "desc",
-
-          };
-
-        }
-
-
-        return {
-
-          field,
-
-          direction:
-            "desc",
-
-        };
-
-      }
-    );
-
-  }
-
-
-  // ==========================================================
-  // SORT RESULTS
-  // ==========================================================
-
-  function sortResults(
-    results
-  ) {
 
     if (
-      !Array.isArray(
-        results
-      )
+      !response.ok ||
+      !data.success
     ) {
 
-      return [];
+      throw new Error(
+        data.error ||
+        `Request failed: ${response.status}`
+      );
 
     }
 
 
-    return [
-      ...results
-    ].sort(
-      (
-        a,
-        b
-      ) => {
-
-        let aValue =
-          a?.[
-            resultSort.field
-          ];
-
-
-        let bValue =
-          b?.[
-            resultSort.field
-          ];
-
-
-        if (
-          aValue === null ||
-          aValue === undefined
-        ) {
-
-          aValue = 0;
-
-        }
-
-
-        if (
-          bValue === null ||
-          bValue === undefined
-        ) {
-
-          bValue = 0;
-
-        }
-
-
-        const aNumber =
-          Number(
-            aValue
-          );
-
-
-        const bNumber =
-          Number(
-            bValue
-          );
-
-
-        if (
-          Number.isFinite(
-            aNumber
-          ) &&
-          Number.isFinite(
-            bNumber
-          )
-        ) {
-
-          return (
-            resultSort.direction === "asc"
-              ? aNumber - bNumber
-              : bNumber - aNumber
-          );
-
-        }
-
-
-        const comparison =
-          String(
-            aValue
-          ).localeCompare(
-            String(
-              bValue
-            )
-          );
-
-
-        return (
-          resultSort.direction === "asc"
-            ? comparison
-            : -comparison
-        );
-
-      }
-    );
+    return data;
 
   }
 
 
   // ==========================================================
-  // RUN SIMULATION
+  // FINAL RANGE
+  // ==========================================================
+
+  function buildFinalRange(
+    parameter,
+    best
+  ) {
+
+    const definition =
+      CASCADE_PARAMETERS.find(
+        item =>
+          item.key ===
+          parameter
+      );
+
+
+    const limits =
+      PARAMETER_LIMITS[
+        parameter
+      ];
+
+
+    if (
+      !definition ||
+      !limits
+    ) {
+
+      return null;
+
+    }
+
+
+    const numericBest =
+      Number(
+        best
+      );
+
+
+    if (
+      !Number.isFinite(
+        numericBest
+      )
+    ) {
+
+      return null;
+
+    }
+
+
+    if (
+      definition.integer
+    ) {
+
+      const from =
+        Math.max(
+          limits.min,
+          Math.round(
+            numericBest -
+            definition.finalRange
+          )
+        );
+
+
+      const to =
+        Math.min(
+          limits.max,
+          Math.round(
+            numericBest +
+            definition.finalRange
+          )
+        );
+
+
+      return {
+
+        enabled:
+          true,
+
+        from,
+
+        to,
+
+        step:
+          1,
+
+      };
+
+    }
+
+
+    const from =
+      Math.max(
+        limits.min,
+        Number(
+          (
+            numericBest -
+            definition.finalRange
+          ).toFixed(1)
+        )
+      );
+
+
+    const to =
+      Math.min(
+        limits.max,
+        Number(
+          (
+            numericBest +
+            definition.finalRange
+          ).toFixed(1)
+        )
+      );
+
+
+    return {
+
+      enabled:
+        true,
+
+      from,
+
+      to,
+
+      step:
+        0.1,
+
+    };
+
+  }
+
+
+  // ==========================================================
+  // CALCULATE FULL COMBINATIONS
+  // ==========================================================
+
+  function countRangeValues(
+    setting
+  ) {
+
+    if (
+      !setting
+    ) {
+
+      return 1;
+
+    }
+
+
+    if (
+      setting.enabled !==
+      true
+    ) {
+
+      return 1;
+
+    }
+
+
+    const from =
+      Number(
+        setting.from
+      );
+
+
+    const to =
+      Number(
+        setting.to
+      );
+
+
+    const step =
+      Number(
+        setting.step
+      );
+
+
+    if (
+      !Number.isFinite(from) ||
+      !Number.isFinite(to) ||
+      !Number.isFinite(step) ||
+      step <= 0 ||
+      to < from
+    ) {
+
+      return 1;
+
+    }
+
+
+    const count =
+      Math.floor(
+        (
+          to -
+          from
+        ) /
+        step
+      ) + 1;
+
+
+    return Math.max(
+      1,
+      count
+    );
+
+  }
+
+
+  function calculateFullCombinationCount() {
+
+    const optimize =
+      simulationSettings.optimize;
+
+
+    const keys = [
+
+      "emaLength",
+
+      "smaLength",
+
+      "keltnerLength",
+
+      "keltnerMultiplier",
+
+      "atrLength",
+
+      "stochasticLength",
+
+      "stochastic",
+
+      "macdFast",
+
+      "macdSlow",
+
+      "macdSignal",
+
+      "tpAtr",
+
+      "slAtr",
+
+    ];
+
+
+    let total =
+      1;
+
+
+    for (
+      const key
+      of keys
+    ) {
+
+      const count =
+        countRangeValues(
+          optimize[
+            key
+          ]
+        );
+
+
+      // Prevent the counter itself
+      // from becoming a gigantic number.
+
+      if (
+        total >
+        MAX_COMBINATIONS /
+        count
+      ) {
+
+        return (
+          MAX_COMBINATIONS +
+          1
+        );
+
+      }
+
+
+      total *=
+        count;
+
+    }
+
+
+    return total;
+
+  }
+
+
+  const fullCombinationCount =
+    calculateFullCombinationCount();
+
+
+  const fullSimulationTooLarge =
+    fullCombinationCount >
+    MAX_COMBINATIONS;
+
+
+  // ==========================================================
+  // AUTOMATIC CASCADE
+  // ==========================================================
+
+  async function runAutomaticCascade() {
+
+    if (
+      cascadeRunning ||
+      simulationLoading
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      setCascadeRunning(
+        true
+      );
+
+      setCascadeProgress(
+        0
+      );
+
+      setCascadeResults(
+        null
+      );
+
+      setCascadeError(
+        null
+      );
+
+      setSimulationError(
+        null
+      );
+
+      setSimulationElapsed(
+        0
+      );
+
+
+      // ======================================================
+      // IMPORTANT
+      //
+      // This starts with the current base settings.
+      // Each winner is carried into the next step.
+      //
+      // Nothing is hardcoded as the answer.
+      // ======================================================
+
+      const selectedValues = {
+
+        emaLength:
+          Number(
+            simulationSettings
+              .baseSettings
+              .emaLength
+          ),
+
+        smaLength:
+          Number(
+            simulationSettings
+              .baseSettings
+              .smaLength
+          ),
+
+        keltnerLength:
+          Number(
+            simulationSettings
+              .baseSettings
+              .keltnerLength
+          ),
+
+        keltnerMultiplier:
+          Number(
+            simulationSettings
+              .baseSettings
+              .keltnerMultiplier
+          ),
+
+        atrLength:
+          Number(
+            simulationSettings
+              .baseSettings
+              .atrLength
+          ),
+
+        stochasticLength:
+          Number(
+            simulationSettings
+              .baseSettings
+              .stochasticLength
+          ),
+
+        stochasticSmoothing:
+          Number(
+            simulationSettings
+              .baseSettings
+              .stochasticSmoothing
+          ),
+
+        macdFast:
+          Number(
+            simulationSettings
+              .baseSettings
+              .macdFast
+          ),
+
+        macdSlow:
+          Number(
+            simulationSettings
+              .baseSettings
+              .macdSlow
+          ),
+
+        macdSignal:
+          Number(
+            simulationSettings
+              .baseSettings
+              .macdSignal
+          ),
+
+        tpAtr:
+          Number(
+            simulationSettings
+              .baseSettings
+              .tpAtr
+          ),
+
+      };
+
+
+      const results = [];
+
+
+      // ======================================================
+      // EACH STEP
+      // ======================================================
+
+      for (
+        let index = 0;
+
+        index <
+        CASCADE_PARAMETERS.length;
+
+        index++
+      ) {
+
+        const parameter =
+          CASCADE_PARAMETERS[
+            index
+          ];
+
+
+        console.log(
+          ""
+        );
+
+        console.log(
+          "=================================================="
+        );
+
+        console.log(
+          `AUTO CASCADE STEP ${
+            index + 1
+          } / ${
+            CASCADE_PARAMETERS.length
+          }`
+        );
+
+        console.log(
+          "Parameter:",
+          parameter.label
+        );
+
+        console.log(
+          "=================================================="
+        );
+
+
+        const payload = {
+
+          symbol:
+            simulationSettings.symbol
+              .trim()
+              .toUpperCase(),
+
+          timeframe:
+            simulationSettings.timeframe,
+
+          days:
+            Number(
+              simulationSettings.days
+            ),
+
+          parameter:
+            parameter.key,
+
+          from:
+            parameter.broadFrom,
+
+          to:
+            parameter.broadTo,
+
+          step:
+            parameter.broadStep,
+
+          baseSettings:
+            simulationSettings.baseSettings,
+
+          selectedValues:
+            {
+              ...selectedValues,
+            },
+
+        };
+
+
+        console.log(
+          "CASCADE PAYLOAD:",
+          payload
+        );
+
+
+        const data =
+          await postJSON(
+            "/api/optimize-step",
+            payload
+          );
+
+
+        if (
+          !Array.isArray(
+            data.results
+          ) ||
+          data.results.length === 0
+        ) {
+
+          throw new Error(
+            `No results returned for ${parameter.label}.`
+          );
+
+        }
+
+
+        const best =
+          data.results[0];
+
+
+        const bestValue =
+          Number(
+            best[
+              parameter.key
+            ]
+          );
+
+
+        if (
+          !Number.isFinite(
+            bestValue
+          )
+        ) {
+
+          throw new Error(
+            `Invalid best ${parameter.label} returned by backend.`
+          );
+
+        }
+
+
+        // ====================================================
+        // CARRY WINNER FORWARD
+        // ====================================================
+
+        selectedValues[
+          parameter.key
+        ] =
+          bestValue;
+
+
+        // ====================================================
+        // SAVE RESULT
+        // ====================================================
+
+        results.push({
+
+          parameter:
+            parameter.key,
+
+          label:
+            parameter.label,
+
+          value:
+            bestValue,
+
+          netProfit:
+            Number(
+              best.netProfit ??
+              0
+            ),
+
+          totalTrades:
+            Number(
+              best.totalTrades ??
+              0
+            ),
+
+          profitFactor:
+            best.profitFactor,
+
+          winRate:
+            Number(
+              best.winRate ??
+              0
+            ),
+
+          maxDrawdown:
+            Number(
+              best.maxDrawdown ??
+              0
+            ),
+
+        });
+
+
+        // ====================================================
+        // UPDATE PROGRESS
+        // ====================================================
+
+        const progress =
+          Math.round(
+            (
+              (
+                index +
+                1
+              ) /
+              CASCADE_PARAMETERS.length
+            ) *
+            100
+          );
+
+
+        setCascadeProgress(
+          progress
+        );
+
+      }
+
+
+      // ======================================================
+      // BEST VALUES
+      // ======================================================
+
+      const bestValues = {
+
+        emaLength:
+          selectedValues.emaLength,
+
+        smaLength:
+          selectedValues.smaLength,
+
+        keltnerLength:
+          selectedValues.keltnerLength,
+
+        keltnerMultiplier:
+          selectedValues.keltnerMultiplier,
+
+        atrLength:
+          selectedValues.atrLength,
+
+        stochasticLength:
+          selectedValues.stochasticLength,
+
+        stochasticSmoothing:
+          selectedValues.stochasticSmoothing,
+
+        macdFast:
+          selectedValues.macdFast,
+
+        macdSlow:
+          selectedValues.macdSlow,
+
+        macdSignal:
+          selectedValues.macdSignal,
+
+        tpAtr:
+          selectedValues.tpAtr,
+
+      };
+
+
+      // ======================================================
+      // BUILD FINAL MANUAL OPTIMIZER
+      // ======================================================
+
+      const finalOptimization = {
+
+        ...simulationSettings.optimize,
+
+      };
+
+
+      for (
+        const parameter
+        of CASCADE_PARAMETERS
+      ) {
+
+        const range =
+          buildFinalRange(
+            parameter.key,
+            bestValues[
+              parameter.key
+            ]
+          );
+
+
+        if (
+          range
+        ) {
+
+          finalOptimization[
+            parameter.key
+          ] =
+            range;
+
+        }
+
+      }
+
+
+      // Keep SL manual.
+      //
+      // We do NOT automatically optimize SL in the cascade
+      // because you didn't include SL in the automatic list.
+
+      // ======================================================
+      // SAVE INTO FRONTEND
+      // ======================================================
+
+      setSimulationSettings(
+        previous => ({
+
+          ...previous,
+
+          baseSettings: {
+
+            ...previous.baseSettings,
+
+            ...bestValues,
+
+          },
+
+          optimize:
+            finalOptimization,
+
+        })
+      );
+
+
+      setCascadeResults({
+
+        bestValues,
+
+        results,
+
+        finalOptimization,
+
+      });
+
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "CASCADE COMPLETE"
+      );
+
+      console.log(
+        "BEST VALUES:",
+        bestValues
+      );
+
+      console.log(
+        "FINAL OPTIMIZER:",
+        finalOptimization
+      );
+
+      console.log(
+        "=================================================="
+      );
+
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "AUTOMATIC CASCADE ERROR:",
+        error
+      );
+
+
+      setCascadeError(
+        error.message
+      );
+
+    } finally {
+
+      setCascadeRunning(
+        false
+      );
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // FULL SIMULATION
   // ==========================================================
 
   async function runSimulation() {
+
+    const combinationCount =
+      calculateFullCombinationCount();
+
+
+    // ========================================================
+    // HARD FRONTEND SAFETY CHECK
+    // ========================================================
+
+    if (
+      combinationCount >
+      MAX_COMBINATIONS
+    ) {
+
+      setSimulationError(
+        `Too many combinations: ${
+          combinationCount.toLocaleString()
+        }. Maximum allowed is ${
+          MAX_COMBINATIONS.toLocaleString()
+        }. Reduce the ranges first.`
+      );
+
+      return;
+
+    }
+
 
     try {
 
@@ -815,161 +1786,47 @@ function App() {
       };
 
 
-      console.log("");
-
       console.log(
         "=================================================="
       );
 
       console.log(
-        "SIMULATION START"
+        "FULL SIMULATION"
       );
 
       console.log(
-        "=================================================="
-      );
-
-      console.log(
-        "Estimated combinations:",
-        calculateCombinationCount()
+        "Expected combinations:",
+        combinationCount
       );
 
       console.log(
         "PAYLOAD:",
-        JSON.stringify(
-          payload,
-          null,
-          2
-        )
+        payload
       );
 
-
-      if (
-        !payload.optimization ||
-        typeof payload.optimization !==
-          "object"
-      ) {
-
-        throw new Error(
-          "Optimization settings are missing."
-        );
-
-      }
-
-
-      const response =
-        await fetch(
-          `${API_URL}/api/simulate`,
-          {
-
-            method:
-              "POST",
-
-            headers: {
-
-              "Content-Type":
-                "application/json",
-
-            },
-
-            body:
-              JSON.stringify(
-                payload
-              ),
-
-          }
-        );
-
-
-      const contentType =
-        response.headers.get(
-          "content-type"
-        ) || "";
-
-
-      if (
-        !contentType.includes(
-          "application/json"
-        )
-      ) {
-
-        const text =
-          await response.text();
-
-
-        throw new Error(
-          `API returned non-JSON response (${response.status}). ` +
-          `Response: ${text.slice(
-            0,
-            300
-          )}`
-        );
-
-      }
+      console.log(
+        "=================================================="
+      );
 
 
       const data =
-        await response.json();
-
-
-      console.log(
-        "SIMULATION RESPONSE:",
-        data
-      );
-
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-
-        throw new Error(
-          data.error ||
-          "Simulation failed."
+        await postJSON(
+          "/api/simulate",
+          payload
         );
-
-      }
-
-
-      if (
-        !Array.isArray(
-          data.results
-        )
-      ) {
-
-        throw new Error(
-          "Backend returned invalid results."
-        );
-
-      }
-
-
-      console.log(
-        "Total combinations:",
-        data.totalCombinations
-      );
-
-      console.log(
-        "Completed:",
-        data.completed
-      );
-
-      console.log(
-        "Returned:",
-        data.results.length
-      );
 
 
       setSimulationResults(
         data
       );
 
+
     } catch (
       error
     ) {
 
       console.error(
-        "SIMULATION ERROR:",
+        "FULL SIMULATION ERROR:",
         error
       );
 
@@ -987,6 +1844,188 @@ function App() {
     }
 
   }
+
+
+  // ==========================================================
+  // SORTING
+  // ==========================================================
+
+  function handleResultSort(
+    field
+  ) {
+
+    setResultSort(
+      previous => {
+
+        if (
+          previous.field ===
+          field
+        ) {
+
+          return {
+
+            field,
+
+            direction:
+              previous.direction ===
+              "desc"
+                ? "asc"
+                : "desc",
+
+          };
+
+        }
+
+
+        return {
+
+          field,
+
+          direction:
+            "desc",
+
+        };
+
+      }
+    );
+
+  }
+
+
+  function sortResults(
+    results
+  ) {
+
+    if (
+      !Array.isArray(
+        results
+      )
+    ) {
+
+      return [];
+
+    }
+
+
+    return [
+      ...results,
+    ].sort(
+      (
+        a,
+        b
+      ) => {
+
+        let aValue =
+          a?.[
+            resultSort.field
+          ];
+
+
+        let bValue =
+          b?.[
+            resultSort.field
+          ];
+
+
+        if (
+          aValue === null ||
+          aValue === undefined
+        ) {
+
+          aValue =
+            0;
+
+        }
+
+
+        if (
+          bValue === null ||
+          bValue === undefined
+        ) {
+
+          bValue =
+            0;
+
+        }
+
+
+        const aNumber =
+          Number(
+            aValue
+          );
+
+
+        const bNumber =
+          Number(
+            bValue
+          );
+
+
+        if (
+          Number.isFinite(
+            aNumber
+          ) &&
+          Number.isFinite(
+            bNumber
+          )
+        ) {
+
+          return resultSort.direction ===
+            "asc"
+
+            ? aNumber -
+              bNumber
+
+            : bNumber -
+              aNumber;
+
+        }
+
+
+        return (
+          resultSort.direction ===
+          "asc"
+
+            ? String(
+                aValue
+              ).localeCompare(
+                String(
+                  bValue
+                )
+              )
+
+            : String(
+                bValue
+              ).localeCompare(
+                String(
+                  aValue
+                )
+              )
+        );
+
+      }
+    );
+
+  }
+
+
+  const topResults =
+    useMemo(
+      () => {
+
+        return sortResults(
+          simulationResults?.results
+        ).slice(
+          0,
+          300
+        );
+
+      },
+      [
+        simulationResults,
+        resultSort,
+      ]
+    );
 
 
   // ==========================================================
@@ -1014,16 +2053,13 @@ function App() {
     }
 
 
-    const sign =
-      number > 0
-        ? "+"
-        : "";
-
-
     return (
-      `${sign}$${number.toFixed(
-        4
-      )}`
+      `${
+        number >
+        0
+          ? "+"
+          : ""
+      }$${number.toFixed(4)}`
     );
 
   }
@@ -1080,9 +2116,7 @@ function App() {
 
 
     return (
-      `${number.toFixed(
-        2
-      )}%`
+      `${number.toFixed(2)}%`
     );
 
   }
@@ -1093,8 +2127,10 @@ function App() {
   ) {
 
     if (
-      value === Infinity ||
-      value === "Infinity"
+      value ===
+        Infinity ||
+      value ===
+        "Infinity"
     ) {
 
       return "∞";
@@ -1114,14 +2150,23 @@ function App() {
     seconds
   ) {
 
+    const total =
+      Number(
+        seconds
+      ) ||
+      0;
+
+
     const minutes =
       Math.floor(
-        seconds / 60
+        total /
+        60
       );
 
 
     const secs =
-      seconds % 60;
+      total %
+      60;
 
 
     return (
@@ -1144,44 +2189,17 @@ function App() {
 
 
   // ==========================================================
-  // TOP 300
-  // ==========================================================
-
-  const topResults =
-    useMemo(() => {
-
-      if (
-        !simulationResults ||
-        !Array.isArray(
-          simulationResults.results
-        )
-      ) {
-
-        return [];
-
-      }
-
-
-      return sortResults(
-        simulationResults.results
-      ).slice(
-        0,
-        300
-      );
-
-    }, [
-      simulationResults,
-      resultSort,
-    ]);
-
-
-  // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
 
     <div className="app-page">
+
+
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
 
       <header className="app-header">
 
@@ -1192,8 +2210,7 @@ function App() {
           </h1>
 
           <p>
-            EMA + SMA + MACD +
-            Stochastic + Keltner
+            Automatic Cascade + Full Optimizer
           </p>
 
         </div>
@@ -1210,11 +2227,16 @@ function App() {
       </header>
 
 
+      {/* ======================================================
+          TABS
+      ====================================================== */}
+
       <div className="tabs">
 
         <button
           className={
-            activeTab === "simulation"
+            activeTab ===
+            "simulation"
               ? "tab-button active"
               : "tab-button"
           }
@@ -1225,45 +2247,45 @@ function App() {
               )
           }
         >
+
           Simulation
+
         </button>
 
       </div>
 
 
-      {activeTab === "simulation" && (
+      {/* ======================================================
+          MARKET
+      ====================================================== */}
+
+      {activeTab ===
+        "simulation" && (
 
         <>
+
 
           <section className="panel">
 
             <h2>
-              Simulation
+              Market
             </h2>
 
             <p className="muted">
 
-              Optimize only the parameters
-              you select.
+              Choose the market and historical period.
 
             </p>
 
 
-            {/* ==================================================
-                MARKET
-            ================================================== */}
-
-            <h3 className="section-title">
-              Market
-            </h3>
-
-
             <div className="form-grid">
+
 
               <Field
                 label="Coin"
                 value={
-                  simulationSettings.symbol
+                  simulationSettings
+                    .symbol
                 }
                 onChange={
                   event =>
@@ -1282,42 +2304,42 @@ function App() {
               />
 
 
-              <Field
-                label="Timeframe"
-                value={
-                  simulationSettings.timeframe
-                }
-                onChange={
-                  event =>
-                    setSimulationSettings(
-                      previous => ({
+   <Field
+  label="Timeframe"
+  value={
+    simulationSettings.timeframe
+  }
+  onChange={
+    event =>
+      setSimulationSettings(
+        previous => ({
+          ...previous,
 
-                        ...previous,
+          timeframe:
+            event.target.value,
 
-                        timeframe:
-                          event.target.value,
-
-                      })
-                    )
-                }
-                type="select"
-                options={[
-                  "1m",
-                  "5m",
-                  "15m",
-                  "30m",
-                  "1H",
-                  "4H",
-                  "12H",
-                  "1D",
-                ]}
-              />
+        })
+      )
+  }
+  type="select"
+  options={[
+    "1m",
+    "5m",
+    "15m",
+    "30m",
+    "1H",
+    "4H",
+    "12H",
+    "1D",
+  ]}
+/>
 
 
               <Field
                 label="Days"
                 value={
-                  simulationSettings.days
+                  simulationSettings
+                    .days
                 }
                 onChange={
                   event =>
@@ -1341,16 +2363,445 @@ function App() {
             </div>
 
 
-            {/* ==================================================
-                OPTIMIZE
-            ================================================== */}
+            <div className="simulation-actions">
 
-            <h3 className="section-title">
-              Optimize
-            </h3>
 
+              <button
+                className="secondary-button"
+                disabled={
+                  cascadeRunning ||
+                  simulationLoading
+                }
+                onClick={
+                  loadPineDefaults
+                }
+              >
+
+                Reset Defaults
+
+              </button>
+
+
+              <button
+                className={
+                  cascadeRunning
+                    ? "cascade-button running"
+                    : "cascade-button"
+                }
+                disabled={
+                  cascadeRunning ||
+                  simulationLoading
+                }
+                onClick={
+                  runAutomaticCascade
+                }
+              >
+
+                <span className="rocket-icon">
+                  🚀
+                </span>
+
+
+                <span>
+
+                  {
+                    cascadeRunning
+
+                      ? `Cascade ${cascadeProgress}%`
+
+                      : "Automatic Cascade"
+
+                  }
+
+                </span>
+
+              </button>
+
+            </div>
+
+          </section>
+
+
+          {/* ====================================================
+              CASCADE ERROR
+          ==================================================== */}
+
+          {cascadeError && (
+
+            <ErrorBox
+              message={
+                cascadeError
+              }
+            />
+
+          )}
+
+
+          {/* ====================================================
+              CASCADE RESULTS
+          ==================================================== */}
+
+          {cascadeResults && (
+
+            <section className="panel cascade-panel">
+
+              <div className="results-header">
+
+                <div>
+
+                  <span className="step-badge">
+                    CASCADE COMPLETE
+                  </span>
+
+
+                  <h2>
+                    Best Values Found
+                  </h2>
+
+
+                  <p className="muted">
+
+                    These values were discovered
+                    automatically. The large optimizer
+                    below is now populated around them,
+                    but you can manually change every range.
+
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              {/* ==============================================
+                  COMPACT TABLE
+              ============================================== */}
+
+              <div className="cascade-table-wrapper">
+
+                <table>
+
+                  <thead>
+
+                    <tr>
+
+                      <th>
+                        Parameter
+                      </th>
+
+                      <th>
+                        Best
+                      </th>
+
+                      <th>
+                        P&L
+                      </th>
+
+                      <th>
+                        Trades
+                      </th>
+
+                    </tr>
+
+                  </thead>
+
+
+                  <tbody>
+
+                    {
+                      cascadeResults.results.map(
+                        result => (
+
+                          <tr
+                            key={
+                              result.parameter
+                            }
+                          >
+
+                            <td>
+
+                              <strong>
+                                {
+                                  result.label
+                                }
+                              </strong>
+
+                            </td>
+
+
+                            <td>
+
+                              <strong>
+                                {
+                                  result.value
+                                }
+                              </strong>
+
+                            </td>
+
+
+                            <ProfitCell
+                              value={
+                                result.netProfit
+                              }
+                            >
+
+                              {
+                                formatMoney(
+                                  result.netProfit
+                                )
+                              }
+
+                            </ProfitCell>
+
+
+                            <td>
+
+                              <strong>
+                                {
+                                  result.totalTrades
+                                }
+                              </strong>
+
+                            </td>
+
+                          </tr>
+
+                        )
+                      )
+                    }
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+
+              {/* ==============================================
+                  SIMPLE BEST VALUES
+              ============================================== */}
+
+              <div className="cascade-best-values">
+
+
+                <CascadeValue
+                  label="EMA"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .emaLength
+                  }
+                />
+
+
+                <CascadeValue
+                  label="SMA"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .smaLength
+                  }
+                />
+
+
+                <CascadeValue
+                  label="KC Length"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .keltnerLength
+                  }
+                />
+
+
+                <CascadeValue
+                  label="KC Mult"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .keltnerMultiplier
+                  }
+                />
+
+
+                <CascadeValue
+                  label="ATR"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .atrLength
+                  }
+                />
+
+
+                <CascadeValue
+                  label="Stoch Length"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .stochasticLength
+                  }
+                />
+
+
+                <CascadeValue
+                  label="Stoch Smooth"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .stochasticSmoothing
+                  }
+                />
+
+
+                <CascadeValue
+                  label="MACD Fast"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .macdFast
+                  }
+                />
+
+
+                <CascadeValue
+                  label="MACD Slow"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .macdSlow
+                  }
+                />
+
+
+                <CascadeValue
+                  label="MACD Signal"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .macdSignal
+                  }
+                />
+
+
+                <CascadeValue
+                  label="TP ATR"
+                  value={
+                    cascadeResults
+                      .bestValues
+                      .tpAtr
+                  }
+                />
+
+              </div>
+
+            </section>
+
+          )}
+
+
+          {/* ====================================================
+              FULL OPTIMIZER
+          ==================================================== */}
+
+          <section className="panel">
+
+            <h2>
+              Full Simulation Optimizer
+            </h2>
+
+
+            <p className="muted">
+
+              After the cascade, these ranges are
+              automatically narrowed around the discovered
+              values. You can manually change them.
+
+            </p>
+
+
+            {/* ================================================
+                COMBINATION ESTIMATE
+            ================================================ */}
+
+            <div
+              className={
+                fullSimulationTooLarge
+                  ? "optimization-estimate optimization-estimate-danger"
+                  : "optimization-estimate optimization-estimate-safe"
+              }
+            >
+
+              <div>
+
+                <span>
+                  Estimated combinations
+                </span>
+
+
+                <strong>
+                  {
+                    fullCombinationCount.toLocaleString()
+                  }
+                </strong>
+
+              </div>
+
+
+              <div className="estimate-limit">
+
+                Maximum allowed:
+
+                {" "}
+
+                <strong>
+                  {
+                    MAX_COMBINATIONS.toLocaleString()
+                  }
+                </strong>
+
+              </div>
+
+
+              {
+                fullSimulationTooLarge
+
+                  ? (
+
+                    <div className="optimization-warning">
+
+                      ⚠️ This configuration is too large.
+
+                      <br />
+
+                      Reduce the ranges before running
+                      the full simulation.
+
+                    </div>
+
+                  )
+
+                  : (
+
+                    <div className="optimization-safe">
+
+                      ✓ Safe to run.
+
+                    </div>
+
+                  )
+              }
+
+            </div>
+
+
+            {/* ================================================
+                PARAMETER RANGES
+            ================================================ */}
 
             <div className="optimization-list">
+
 
               <RangeOptimizer
                 label="EMA"
@@ -1426,8 +2877,6 @@ function App() {
               />
 
 
-              {/* NEW STOCH LENGTH */}
-
               <RangeOptimizer
                 label="Stoch Length"
                 name="stochasticLength"
@@ -1442,8 +2891,6 @@ function App() {
                 integer
               />
 
-
-              {/* STOCH SMOOTHING */}
 
               <RangeOptimizer
                 label="Stoch Smooth"
@@ -1506,7 +2953,7 @@ function App() {
 
 
               <RangeOptimizer
-                label="TP"
+                label="TP ATR"
                 name="tpAtr"
                 setting={
                   simulationSettings
@@ -1520,7 +2967,7 @@ function App() {
 
 
               <RangeOptimizer
-                label="SL"
+                label="SL ATR"
                 name="slAtr"
                 setting={
                   simulationSettings
@@ -1535,150 +2982,35 @@ function App() {
             </div>
 
 
-            {/* ==================================================
-                FIXED SETTINGS
-            ================================================== */}
-
-            <h3 className="section-title">
-              Fixed Settings
-            </h3>
-
-
-            <div className="form-grid">
-
-              <Field
-                label="Source"
-                value={
-                  simulationSettings
-                    .baseSettings
-                    .source
-                }
-                onChange={
-                  event =>
-                    updateBaseSetting(
-                      "source",
-                      event.target.value
-                    )
-                }
-                type="select"
-                options={[
-                  "open",
-                  "high",
-                  "low",
-                  "close",
-                ]}
-              />
-
-
-              <Field
-                label="Balance"
-                value={
-                  simulationSettings
-                    .baseSettings
-                    .balance
-                }
-                onChange={
-                  event =>
-                    updateBaseSetting(
-                      "balance",
-                      Number(
-                        event.target.value
-                      )
-                    )
-                }
-                type="number"
-                step="0.01"
-              />
-
-
-              <Field
-                label="Leverage"
-                value={
-                  simulationSettings
-                    .baseSettings
-                    .leverage
-                }
-                onChange={
-                  event =>
-                    updateBaseSetting(
-                      "leverage",
-                      Number(
-                        event.target.value
-                      )
-                    )
-                }
-                type="number"
-                min="1"
-              />
-
-            </div>
-
-
-            {/* ==================================================
-                ESTIMATE
-            ================================================== */}
-
-            <div className="optimization-estimate">
-
-              <div>
-
-                <span>
-                  Estimated combinations
-                </span>
-
-                <strong>
-                  {
-                    calculateCombinationCount()
-                      .toLocaleString()
-                  }
-                </strong>
-
-              </div>
-
-              <div className="estimate-note">
-
-                Based on the current optimizer
-                ranges.
-
-              </div>
-
-            </div>
-
-
-            {/* ==================================================
-                ACTIONS
-            ================================================== */}
+            {/* ================================================
+                RUN
+            ================================================ */}
 
             <div className="simulation-actions">
 
               <button
-                className="secondary-button"
-                disabled={
-                  simulationLoading
-                }
-                onClick={
-                  loadDefaultTest
-                }
-              >
-
-                Load Default Test
-
-              </button>
-
-
-              <button
                 className="primary-button"
                 disabled={
-                  simulationLoading
+                  simulationLoading ||
+                  cascadeRunning ||
+                  fullSimulationTooLarge
                 }
                 onClick={
                   runSimulation
                 }
               >
 
-                {simulationLoading
-                  ? "Simulation Running..."
-                  : "Run Simulation"}
+                {
+                  fullSimulationTooLarge
+
+                    ? "Too Many Combinations"
+
+                    : simulationLoading
+
+                      ? "Simulation Running..."
+
+                      : "Run Full Simulation"
+                }
 
               </button>
 
@@ -1691,46 +3023,82 @@ function App() {
               LOADING
           ==================================================== */}
 
-          {simulationLoading && (
+          {
+            (
+              cascadeRunning ||
+              simulationLoading
+            ) && (
 
-            <section className="panel loading-panel">
+              <section className="panel loading-panel">
 
-              <div className="loading-header">
+                <div className="loading-header">
 
-                <h2>
-                  Simulation Running
-                </h2>
+                  <h2>
 
-                <strong>
-                  {formatElapsed(
-                    simulationElapsed
-                  )}
-                </strong>
+                    {
+                      cascadeRunning
+                        ? "Automatic Cascade"
+                        : "Full Simulation"
+                    }
 
-              </div>
-
-
-              <div className="progress-bar">
-
-                <div className="progress-bar-fill" />
-
-              </div>
+                  </h2>
 
 
-              <p className="muted">
+                  <strong>
 
-                Fetching candles and testing
-                parameter combinations.
+                    {
+                      cascadeRunning
 
-              </p>
+                        ? `${cascadeProgress}%`
 
-            </section>
+                        : formatElapsed(
+                            simulationElapsed
+                          )
 
-          )}
+                    }
+
+                  </strong>
+
+                </div>
+
+
+                <div className="progress-bar">
+
+                  <div
+                    className="progress-bar-fill"
+                    style={
+                      cascadeRunning
+                        ? {
+                            width:
+                              `${cascadeProgress}%`,
+                          }
+                        : undefined
+                    }
+                  />
+
+                </div>
+
+
+                <p className="muted">
+
+                  {
+                    cascadeRunning
+
+                      ? "Testing one parameter at a time and carrying the winner into the next step."
+
+                      : `Running ${fullCombinationCount.toLocaleString()} combinations.`
+                  }
+
+                </p>
+
+              </section>
+
+            )
+          }
 
 
           {/* ====================================================
-              ERROR
+              FULL SIMULATION ERROR
           ==================================================== */}
 
           {simulationError && (
@@ -1745,533 +3113,422 @@ function App() {
 
 
           {/* ====================================================
-              RESULTS
+              FULL SUMMARY
           ==================================================== */}
 
           {simulationResults && (
 
-            <>
+            <section className="panel">
 
-              <section className="panel">
-
-                <h2>
-                  Simulation Summary
-                </h2>
+              <h2>
+                Simulation Summary
+              </h2>
 
 
-                <div className="results-grid">
-
-                  <ResultCard
-                    title="Coin"
-                    value={
-                      simulationResults.symbol
-                    }
-                  />
-
-                  <ResultCard
-                    title="Timeframe"
-                    value={
-                      simulationResults.timeframe
-                    }
-                  />
-
-                  <ResultCard
-                    title="Days"
-                    value={
-                      simulationResults.days
-                    }
-                  />
-
-                  <ResultCard
-                    title="Candles"
-                    value={
-                      Number(
-                        simulationResults.candles ||
-                        0
-                      ).toLocaleString()
-                    }
-                  />
-
-                  <ResultCard
-                    title="Total Tests"
-                    value={
-                      Number(
-                        simulationResults
-                          .totalCombinations ||
-                        0
-                      ).toLocaleString()
-                    }
-                  />
-
-                  <ResultCard
-                    title="Completed"
-                    value={
-                      Number(
-                        simulationResults
-                          .completed ||
-                        0
-                      ).toLocaleString()
-                    }
-                  />
-
-                  <ResultCard
-                    title="Returned"
-                    value={
-                      Array.isArray(
-                        simulationResults.results
-                      )
-                        ? simulationResults.results.length
-                        : 0
-                    }
-                  />
-
-                  <ResultCard
-                    title="Elapsed"
-                    value={
-                      `${Number(
-                        simulationResults
-                          .elapsedSeconds ||
-                        0
-                      ).toFixed(
-                        2
-                      )}s`
-                    }
-                  />
-
-                </div>
-
-              </section>
+              <div className="results-grid">
 
 
-              <section className="panel">
+                <ResultCard
+                  title="Coin"
+                  value={
+                    simulationResults.symbol
+                  }
+                />
 
-                <div className="results-header">
 
-                  <div>
+                <ResultCard
+                  title="Timeframe"
+                  value={
+                    simulationResults.timeframe
+                  }
+                />
 
-                    <h2>
-                      Top 300 Results
-                    </h2>
 
-                    <p className="muted">
+                <ResultCard
+                  title="Days"
+                  value={
+                    simulationResults.days
+                  }
+                />
 
-                      Showing{" "}
 
-                      <strong>
-                        {topResults.length}
-                      </strong>
+                <ResultCard
+                  title="Candles"
+                  value={
+                    Number(
+                      simulationResults.candles ||
+                      0
+                    ).toLocaleString()
+                  }
+                />
 
-                      {" "}
-                      returned results.
 
-                      {" "}
+                <ResultCard
+                  title="Tests"
+                  value={
+                    Number(
+                      simulationResults.totalCombinations ||
+                      0
+                    ).toLocaleString()
+                  }
+                />
 
-                      Click a column header
-                      to sort.
 
-                    </p>
+                <ResultCard
+                  title="Completed"
+                  value={
+                    Number(
+                      simulationResults.completed ||
+                      0
+                    ).toLocaleString()
+                  }
+                />
 
-                  </div>
+
+                <ResultCard
+                  title="Returned"
+                  value={
+                    Array.isArray(
+                      simulationResults.results
+                    )
+                      ? simulationResults
+                          .results.length
+                      : 0
+                  }
+                />
+
+
+              </div>
+
+            </section>
+
+          )}
+
+
+          {/* ====================================================
+              TOP 300
+          ==================================================== */}
+
+          {simulationResults && (
+
+            <section className="panel">
+
+              <div className="results-header">
+
+                <div>
+
+                  <h2>
+                    Top 300 Results
+                  </h2>
+
+                  <p className="muted">
+
+                    Click a column to sort.
+                    Default: highest number of trades.
+
+                  </p>
 
                 </div>
 
+              </div>
 
-                {topResults.length === 0 ? (
 
-                  <div className="empty-results">
+              <TableWrapper>
 
-                    <strong>
-                      No results returned.
-                    </strong>
+                <table>
 
-                    <p>
-                      Check the backend console.
-                    </p>
+                  <thead>
 
-                  </div>
+                    <tr>
 
-                ) : (
+                      <th>
+                        Rank
+                      </th>
 
-                  <TableWrapper>
 
-                    <table>
+                      <SortableHeader
+                        field="netProfit"
+                        label="Net P&L"
+                        sort={
+                          resultSort
+                        }
+                        onSort={
+                          handleResultSort
+                        }
+                      />
 
-                      <thead>
 
-                        <tr>
+                      <SortableHeader
+                        field="profitFactor"
+                        label="PF"
+                        sort={
+                          resultSort
+                        }
+                        onSort={
+                          handleResultSort
+                        }
+                      />
 
-                          <th>
-                            Rank
-                          </th>
 
-                          <th>
-                            Coin
-                          </th>
+                      <SortableHeader
+                        field="winRate"
+                        label="Win Rate"
+                        sort={
+                          resultSort
+                        }
+                        onSort={
+                          handleResultSort
+                        }
+                      />
 
-                          <SortableHeader
-                            field="optimizationScore"
-                            label="Score"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
+
+                      <SortableHeader
+                        field="totalTrades"
+                        label="Trades"
+                        sort={
+                          resultSort
+                        }
+                        onSort={
+                          handleResultSort
+                        }
+                      />
+
+
+                      <SortableHeader
+                        field="maxDrawdown"
+                        label="Drawdown"
+                        sort={
+                          resultSort
+                        }
+                        onSort={
+                          handleResultSort
+                        }
+                      />
+
+
+                      <th>
+                        EMA
+                      </th>
+
+
+                      <th>
+                        SMA
+                      </th>
+
+
+                      <th>
+                        KC
+                      </th>
+
+
+                      <th>
+                        ATR
+                      </th>
+
+
+                      <th>
+                        Stoch
+                      </th>
+
+
+                      <th>
+                        MACD
+                      </th>
+
+
+                      <th>
+                        TP
+                      </th>
+
+
+                      <th>
+                        SL
+                      </th>
+
+                    </tr>
+
+                  </thead>
+
+
+                  <tbody>
+
+                    {
+                      topResults.map(
+                        (
+                          result,
+                          index
+                        ) => (
+
+                          <tr
+                            key={
+                              [
+                                index,
+                                result.emaLength,
+                                result.smaLength,
+                                result.keltnerLength,
+                                result.keltnerMultiplier,
+                                result.atrLength,
+                                result.stochasticLength,
+                                result.stochasticSmoothing,
+                                result.macdFast,
+                                result.macdSlow,
+                                result.macdSignal,
+                                result.tpAtr,
+                                result.slAtr,
+                              ].join("-")
                             }
-                          />
+                          >
 
-                          <SortableHeader
-                            field="netProfit"
-                            label="Net P&L"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
+                            <td>
 
-                          <SortableHeader
-                            field="profitFactor"
-                            label="PF"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
+                              <strong>
+                                {
+                                  index + 1
+                                }
+                              </strong>
 
-                          <SortableHeader
-                            field="winRate"
-                            label="Win Rate"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <SortableHeader
-                            field="totalTrades"
-                            label="Trades"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <SortableHeader
-                            field="maxDrawdown"
-                            label="Drawdown"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <SortableHeader
-                            field="emaLength"
-                            label="EMA"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <SortableHeader
-                            field="smaLength"
-                            label="SMA"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <th>
-                            Source
-                          </th>
-
-                          <SortableHeader
-                            field="keltnerLength"
-                            label="KC Length"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <SortableHeader
-                            field="keltnerMultiplier"
-                            label="KC Mult"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <SortableHeader
-                            field="atrLength"
-                            label="ATR"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          {/* NEW */}
-
-                          <SortableHeader
-                            field="stochasticLength"
-                            label="Stoch Length"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <SortableHeader
-                            field="stochasticSmoothing"
-                            label="Stoch Smooth"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <th>
-                            MACD
-                          </th>
-
-                          <SortableHeader
-                            field="tpAtr"
-                            label="TP"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                          <SortableHeader
-                            field="slAtr"
-                            label="SL"
-                            sort={resultSort}
-                            onSort={
-                              handleResultSort
-                            }
-                          />
-
-                        </tr>
-
-                      </thead>
+                            </td>
 
 
-                      <tbody>
-
-                        {topResults.map(
-                          (
-                            result,
-                            index
-                          ) => (
-
-                            <tr
-                              key={
-                                [
-                                  simulationResults.symbol,
-                                  index,
-                                  result.emaLength,
-                                  result.smaLength,
-                                  result.keltnerLength,
-                                  result.keltnerMultiplier,
-                                  result.atrLength,
-                                  result.stochasticLength,
-                                  result.stochasticSmoothing,
-                                  result.macdFast,
-                                  result.macdSlow,
-                                  result.macdSignal,
-                                  result.tpAtr,
-                                  result.slAtr,
-                                ].join(
-                                  "-"
-                                )
+                            <ProfitCell
+                              value={
+                                result.netProfit
                               }
                             >
 
-                              <td>
-                                <strong>
-                                  {
-                                    index + 1
-                                  }
-                                </strong>
-                              </td>
-
-
-                              <td>
-                                {
-                                  simulationResults
-                                    .symbol
-                                }
-                              </td>
-
-
-                              <td>
-                                {
-                                  formatNumber(
-                                    result
-                                      .optimizationScore,
-                                    4
-                                  )
-                                }
-                              </td>
-
-
-                              <ProfitCell
-                                value={
+                              {
+                                formatMoney(
                                   result.netProfit
-                                }
-                              >
+                                )
+                              }
 
+                            </ProfitCell>
+
+
+                            <td>
+                              {
+                                getProfitFactor(
+                                  result.profitFactor
+                                )
+                              }
+                            </td>
+
+
+                            <td>
+                              {
+                                formatPercent(
+                                  result.winRate
+                                )
+                              }
+                            </td>
+
+
+                            <td>
+
+                              <strong>
                                 {
-                                  formatMoney(
-                                    result.netProfit
-                                  )
+                                  result.totalTrades ??
+                                  0
                                 }
+                              </strong>
 
-                              </ProfitCell>
-
-
-                              <td>
-                                {
-                                  getProfitFactor(
-                                    result
-                                      .profitFactor
-                                  )
-                                }
-                              </td>
+                            </td>
 
 
-                              <td>
-                                {
-                                  formatPercent(
-                                    result.winRate
-                                  )
-                                }
-                              </td>
+                            <td>
+                              {
+                                formatPercent(
+                                  result.maxDrawdown
+                                )
+                              }
+                            </td>
 
 
-                              <td>
-                                <strong>
-                                  {
-                                    result.totalTrades
-                                  }
-                                </strong>
-                              </td>
+                            <td>
+                              {
+                                result.emaLength
+                              }
+                            </td>
 
 
-                              <td>
-                                {
-                                  formatPercent(
-                                    result.maxDrawdown
-                                  )
-                                }
-                              </td>
+                            <td>
+                              {
+                                result.smaLength
+                              }
+                            </td>
 
 
-                              <td>
-                                {
-                                  result.emaLength
-                                }
-                              </td>
+                            <td>
+                              {
+                                result.keltnerLength
+                              }
+                              /
+                              {
+                                result.keltnerMultiplier
+                              }
+                            </td>
 
 
-                              <td>
-                                {
-                                  result.smaLength
-                                }
-                              </td>
+                            <td>
+                              {
+                                result.atrLength
+                              }
+                            </td>
 
 
-                              <td>
-                                {
-                                  result.source
-                                }
-                              </td>
+                            <td>
+                              {
+                                result.stochasticLength
+                              }
+                              /
+                              {
+                                result.stochasticSmoothing
+                              }
+                            </td>
 
 
-                              <td>
-                                {
-                                  result.keltnerLength
-                                }
-                              </td>
+                            <td>
+                              {
+                                result.macdFast
+                              }
+                              /
+                              {
+                                result.macdSlow
+                              }
+                              /
+                              {
+                                result.macdSignal
+                              }
+                            </td>
 
 
-                              <td>
-                                {
-                                  result.keltnerMultiplier
-                                }
-                              </td>
+                            <td>
+                              {
+                                result.tpAtr
+                              }
+                            </td>
 
 
-                              <td>
-                                {
-                                  result.atrLength
-                                }
-                              </td>
+                            <td>
+                              {
+                                result.slAtr ??
+                                "NONE"
+                              }
+                            </td>
 
+                          </tr>
 
-                              {/* NEW */}
+                        )
+                      )
+                    }
 
-                              <td>
-                                {
-                                  result.stochasticLength
-                                }
-                              </td>
+                  </tbody>
 
+                </table>
 
-                              <td>
-                                {
-                                  result.stochasticSmoothing
-                                }
-                              </td>
+              </TableWrapper>
 
-
-                              <td>
-                                {
-                                  result.macdFast
-                                }
-                                /
-                                {
-                                  result.macdSlow
-                                }
-                                /
-                                {
-                                  result.macdSignal
-                                }
-                              </td>
-
-
-                              <td>
-                                {
-                                  result.tpAtr
-                                }
-                              </td>
-
-
-                              <td>
-                                {
-                                  result.slAtr ??
-                                  "NONE"
-                                }
-                              </td>
-
-                            </tr>
-
-                          )
-                        )}
-
-                      </tbody>
-
-                    </table>
-
-                  </TableWrapper>
-
-                )}
-
-              </section>
-
-            </>
+            </section>
 
           )}
 
@@ -2287,69 +3544,28 @@ function App() {
 
 
 // ============================================================
-// SORTABLE HEADER
+// CASCADE VALUE
 // ============================================================
 
-function SortableHeader({
-  field,
+function CascadeValue({
   label,
-  sort,
-  onSort,
+  value,
 }) {
-
-  const isActive =
-    sort.field === field;
-
-
-  const indicator =
-    isActive
-
-      ? (
-          sort.direction === "desc"
-            ? "↓"
-            : "↑"
-        )
-
-      : "↕";
-
 
   return (
 
-    <th
-      onClick={() =>
-        onSort(field)
-      }
-      style={{
-        cursor:
-          "pointer",
+    <div>
 
-        userSelect:
-          "none",
-
-        whiteSpace:
-          "nowrap",
-      }}
-      title={
-        `Sort by ${label}`
-      }
-    >
-
-      {label}
-
-      {" "}
-
-      <span
-        style={{
-          opacity:
-            isActive
-              ? 1
-              : 0.4,
-        }}
-      >
-        {indicator}
+      <span>
+        {label}
       </span>
 
-    </th>
+
+      <strong>
+        {value}
+      </strong>
+
+    </div>
 
   );
 
@@ -2368,39 +3584,11 @@ function RangeOptimizer({
   integer = false,
 }) {
 
-  function numberValue(
-    value
+  if (
+    !setting
   ) {
 
-    if (
-      value === "" ||
-      value === null ||
-      value === undefined
-    ) {
-
-      return "";
-
-    }
-
-
-    const number =
-      Number(
-        value
-      );
-
-
-    if (
-      !Number.isFinite(
-        number
-      )
-    ) {
-
-      return "";
-
-    }
-
-
-    return number;
+    return null;
 
   }
 
@@ -2410,30 +3598,23 @@ function RangeOptimizer({
     rawValue
   ) {
 
-    const value =
-      field === "enabled"
-
-        ? rawValue
-
-        : numberValue(
-            rawValue
-          );
+    let value =
+      rawValue;
 
 
-    console.log(
-      "RANGE INPUT CHANGED:",
-      {
-        parameter:
-          name,
+    if (
+      field !==
+      "enabled"
+    ) {
 
-        field,
+      value =
+        rawValue === ""
+          ? ""
+          : Number(
+              rawValue
+            );
 
-        rawValue,
-
-        value,
-
-      }
-    );
+    }
 
 
     onChange(
@@ -2449,6 +3630,7 @@ function RangeOptimizer({
 
     <div className="optimizer-row">
 
+
       <div className="optimizer-header">
 
         <label>
@@ -2456,7 +3638,9 @@ function RangeOptimizer({
           <input
             type="checkbox"
             checked={
-              setting.enabled
+              Boolean(
+                setting.enabled
+              )
             }
             onChange={
               event =>
@@ -2466,6 +3650,7 @@ function RangeOptimizer({
                 )
             }
           />
+
 
           <strong>
             {label}
@@ -2484,10 +3669,12 @@ function RangeOptimizer({
             Fixed:
           </span>
 
+
           <input
             type="number"
             value={
-              setting.value ?? ""
+              setting.value ??
+              ""
             }
             step={
               integer
@@ -2509,16 +3696,19 @@ function RangeOptimizer({
 
         <div className="range-fields">
 
+
           <div>
 
             <span>
               From
             </span>
 
+
             <input
               type="number"
               value={
-                setting.from ?? ""
+                setting.from ??
+                ""
               }
               step={
                 integer
@@ -2543,10 +3733,12 @@ function RangeOptimizer({
               To
             </span>
 
+
             <input
               type="number"
               value={
-                setting.to ?? ""
+                setting.to ??
+                ""
               }
               step={
                 integer
@@ -2571,10 +3763,12 @@ function RangeOptimizer({
               Step
             </span>
 
+
             <input
               type="number"
               value={
-                setting.step ?? ""
+                setting.step ??
+                ""
               }
               min={
                 integer
@@ -2596,6 +3790,7 @@ function RangeOptimizer({
             />
 
           </div>
+
 
         </div>
 
@@ -2631,7 +3826,8 @@ function Field({
       </label>
 
 
-      {type === "select" ? (
+      {type ===
+        "select" ? (
 
         <select
           value={
@@ -2653,7 +3849,11 @@ function Field({
                   option
                 }
               >
-                {option}
+
+                {
+                  option
+                }
+
               </option>
 
             )
@@ -2692,6 +3892,87 @@ function Field({
 
 
 // ============================================================
+// SORTABLE HEADER
+// ============================================================
+
+function SortableHeader({
+  field,
+  label,
+  sort,
+  onSort,
+}) {
+
+  const active =
+    sort.field ===
+    field;
+
+
+  const indicator =
+    active
+
+      ? (
+          sort.direction ===
+          "desc"
+            ? "↓"
+            : "↑"
+        )
+
+      : "↕";
+
+
+  return (
+
+    <th
+      onClick={
+        () =>
+          onSort(
+            field
+          )
+      }
+      style={{
+        cursor:
+          "pointer",
+
+        userSelect:
+          "none",
+
+        whiteSpace:
+          "nowrap",
+      }}
+      title={
+        `Sort by ${label}`
+      }
+    >
+
+      {
+        label
+      }
+
+      {" "}
+
+      <span
+        style={{
+          opacity:
+            active
+              ? 1
+              : 0.4,
+        }}
+      >
+
+        {
+          indicator
+        }
+
+      </span>
+
+    </th>
+
+  );
+
+}
+
+
+// ============================================================
 // RESULT CARD
 // ============================================================
 
@@ -2705,11 +3986,16 @@ function ResultCard({
     <div className="result-card">
 
       <div className="result-card-title">
-        {title}
+        {
+          title
+        }
       </div>
 
+
       <div className="result-card-value">
-        {value}
+        {
+          value
+        }
       </div>
 
     </div>
@@ -2720,7 +4006,7 @@ function ResultCard({
 
 
 // ============================================================
-// TABLE
+// TABLE WRAPPER
 // ============================================================
 
 function TableWrapper({
@@ -2731,7 +4017,9 @@ function TableWrapper({
 
     <div className="table-wrapper">
 
-      {children}
+      {
+        children
+      }
 
     </div>
 
@@ -2774,7 +4062,11 @@ function ProfitCell({
         className
       }
     >
-      {children}
+
+      {
+        children
+      }
+
     </td>
 
   );
@@ -2795,12 +4087,14 @@ function ErrorBox({
     <div className="error-box">
 
       <strong>
-        Simulation Error:
+        Error:
       </strong>
 
       {" "}
 
-      {message}
+      {
+        message
+      }
 
     </div>
 
@@ -2810,3 +4104,4 @@ function ErrorBox({
 
 
 export default App;
+
