@@ -7,7 +7,33 @@ const {
 
 const {
   runOptimizer,
+  buildGrid,
 } = require("./optimizer");
+
+
+// ======================================================
+// DEBUG OPTIMIZER MODULE
+// ======================================================
+
+console.log(
+  "OPTIMIZER MODULE LOADED:",
+  require.resolve("./optimizer")
+);
+
+console.log(
+  "runOptimizer type:",
+  typeof runOptimizer
+);
+
+console.log(
+  "buildGrid type:",
+  typeof buildGrid
+);
+
+
+// ======================================================
+// APP
+// ======================================================
 
 const app = express();
 
@@ -18,8 +44,13 @@ const PORT = 3001;
 // MIDDLEWARE
 // ======================================================
 
-app.use(cors());
-app.use(express.json());
+app.use(
+  cors()
+);
+
+app.use(
+  express.json()
+);
 
 
 // ======================================================
@@ -38,19 +69,24 @@ const TIMEFRAME_MAP = {
 
   "4H": "4h",
 
+  "12H": "12h",
+
   "1D": "1d",
 
 };
 
 
 // ======================================================
-// GET BINANCE INTERVAL
+// BINANCE INTERVAL
 // ======================================================
 
-function getBinanceInterval(timeframe) {
+function getBinanceInterval(
+  timeframe
+) {
 
   const interval =
     TIMEFRAME_MAP[timeframe];
+
 
   if (!interval) {
 
@@ -60,63 +96,80 @@ function getBinanceInterval(timeframe) {
 
   }
 
+
   return interval;
+
 }
 
 
 // ======================================================
-// NORMALIZE BINANCE CANDLES
+// NORMALIZE CANDLES
 // ======================================================
 
-function normalizeCandles(data) {
+function normalizeCandles(
+  data
+) {
 
-  return data.map((candle) => ({
+  return data.map(
+    (candle) => ({
 
-    time: candle[0],
+      time:
+        candle[0],
 
-    open: Number(candle[1]),
+      open:
+        Number(
+          candle[1]
+        ),
 
-    high: Number(candle[2]),
+      high:
+        Number(
+          candle[2]
+        ),
 
-    low: Number(candle[3]),
+      low:
+        Number(
+          candle[3]
+        ),
 
-    close: Number(candle[4]),
+      close:
+        Number(
+          candle[4]
+        ),
 
-    volume: Number(candle[5]),
+      volume:
+        Number(
+          candle[5]
+        ),
 
-    closeTime: candle[6],
+      closeTime:
+        candle[6],
 
-    quoteVolume: Number(candle[7]),
+      quoteVolume:
+        Number(
+          candle[7]
+        ),
 
-    trades: candle[8],
+      trades:
+        candle[8],
 
-    takerBuyBaseVolume:
-      Number(candle[9]),
+      takerBuyBaseVolume:
+        Number(
+          candle[9]
+        ),
 
-    takerBuyQuoteVolume:
-      Number(candle[10]),
+      takerBuyQuoteVolume:
+        Number(
+          candle[10]
+        ),
 
-  }));
+    })
+  );
 
 }
 
 
 // ======================================================
 // FETCH HISTORICAL BINANCE CANDLES
-// ======================================================
-//
-// Binance Futures API maximum:
-// 1000 candles per request.
-//
-// Examples:
-//
-// 1m  × 10 days  = 14,400 candles
-// 5m  × 10 days  = 2,880 candles
-// 15m × 10 days  = 960 candles
-// 15m × 111 days = 10,656 candles
-//
-// The function automatically makes multiple requests
-// when more than 1000 candles are required.
 // ======================================================
 
 async function fetchHistoricalCandles(
@@ -168,10 +221,18 @@ async function fetchHistoricalCandles(
 
 
   const targetCandles =
-    Math.floor(days * perDay);
+    Math.floor(
+      Number(days) *
+      perDay
+    );
 
 
-  if (targetCandles <= 0) {
+  if (
+    !Number.isFinite(
+      targetCandles
+    ) ||
+    targetCandles <= 0
+  ) {
 
     throw new Error(
       `Invalid number of days: ${days}`
@@ -182,7 +243,8 @@ async function fetchHistoricalCandles(
 
   const allCandles = [];
 
-  let endTime = Date.now();
+  let endTime =
+    Date.now();
 
 
   // ====================================================
@@ -215,13 +277,20 @@ async function fetchHistoricalCandles(
 
 
     const response =
-      await fetch(url);
+      await fetch(
+        url
+      );
 
 
     if (!response.ok) {
 
+      const errorText =
+        await response.text();
+
+
       throw new Error(
-        `Binance API error for ${symbol}: ${response.status}`
+        `Binance API error for ${symbol}: ` +
+        `${response.status} ${errorText}`
       );
 
     }
@@ -242,7 +311,9 @@ async function fetchHistoricalCandles(
 
 
     const batch =
-      normalizeCandles(data);
+      normalizeCandles(
+        data
+      );
 
 
     allCandles.push(
@@ -250,8 +321,8 @@ async function fetchHistoricalCandles(
     );
 
 
-    // Move backwards to the candle immediately
-    // before the oldest candle we just received.
+    // Move backwards to the candle before
+    // the oldest candle we just received.
 
     endTime =
       data[0][0] - 1;
@@ -264,7 +335,8 @@ async function fetchHistoricalCandles(
 
 
     if (
-      data.length < limit
+      data.length <
+      limit
     ) {
 
       break;
@@ -283,7 +355,8 @@ async function fetchHistoricalCandles(
 
 
   for (
-    const candle of allCandles
+    const candle
+    of allCandles
   ) {
 
     unique.set(
@@ -295,21 +368,21 @@ async function fetchHistoricalCandles(
 
 
   // ====================================================
-  // SORT OLDEST → NEWEST
+  // SORT OLDEST -> NEWEST
   // ====================================================
 
   const sorted =
     Array.from(
       unique.values()
     ).sort(
-      (a, b) =>
-        a.time - b.time
+      (
+        a,
+        b
+      ) =>
+        a.time -
+        b.time
     );
 
-
-  // ====================================================
-  // RETURN REQUESTED AMOUNT
-  // ====================================================
 
   return sorted.slice(
     -targetCandles
@@ -319,14 +392,19 @@ async function fetchHistoricalCandles(
 
 
 // ======================================================
-// HEALTH CHECK
+// HEALTH
 // ======================================================
 
 app.get(
   "/api/health",
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
 
     res.json({
+
+      success: true,
 
       status: "ok",
 
@@ -345,13 +423,20 @@ app.get(
 
 app.get(
   "/api/market-data",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
       const symbol =
-        req.query.symbol ||
-        "BTCUSDT";
+        String(
+          req.query.symbol ||
+          "BTCUSDT"
+        )
+          .trim()
+          .toUpperCase();
 
 
       const interval =
@@ -359,18 +444,17 @@ app.get(
         "4h";
 
 
-      const limit = 1000;
-
-
       const url =
         `https://fapi.binance.com/fapi/v1/klines` +
         `?symbol=${encodeURIComponent(symbol)}` +
         `&interval=${interval}` +
-        `&limit=${limit}`;
+        `&limit=1000`;
 
 
       const response =
-        await fetch(url);
+        await fetch(
+          url
+        );
 
 
       if (!response.ok) {
@@ -387,7 +471,9 @@ app.get(
 
 
       const candles =
-        normalizeCandles(data);
+        normalizeCandles(
+          data
+        );
 
 
       res.json({
@@ -405,9 +491,14 @@ app.get(
 
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
-      console.error(error);
+      console.error(
+        "Market data error:",
+        error
+      );
 
 
       res.status(500).json({
@@ -431,7 +522,10 @@ app.get(
 
 app.post(
   "/api/backtest",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
@@ -445,38 +539,59 @@ app.post(
       } = req.body;
 
 
-      // --------------------------------------------------
-      // TIMEFRAME
-      // --------------------------------------------------
-
       const interval =
-        getBinanceInterval(timeframe);
+        getBinanceInterval(
+          timeframe
+        );
 
 
-      // --------------------------------------------------
-      // BACKTEST DATA
-      // --------------------------------------------------
+      const days =
+        60;
 
-      const days = 60;
+
+      const cleanSymbol =
+        String(
+          symbol ||
+          "BTCUSDT"
+        )
+          .trim()
+          .toUpperCase();
 
 
       const candles =
         await fetchHistoricalCandles(
-          symbol,
+          cleanSymbol,
           interval,
           days
         );
 
 
+      console.log("");
+
       console.log(
-        `Fetched ${candles.length} candles for ` +
-        `${symbol} ${timeframe} (${days} days)`
+        "=================================================="
       );
 
+      console.log(
+        "BACKTEST"
+      );
 
-      // --------------------------------------------------
-      // RUN BACKTEST
-      // --------------------------------------------------
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        `Coin: ${cleanSymbol}`
+      );
+
+      console.log(
+        `Timeframe: ${timeframe}`
+      );
+
+      console.log(
+        `Candles: ${candles.length}`
+      );
+
 
       const results =
         runBacktest(
@@ -495,80 +610,79 @@ app.post(
         );
 
 
-      // --------------------------------------------------
-      // CONSOLE RESULTS
-      // --------------------------------------------------
+      console.log("");
 
       console.log(
-        "Backtest results:"
+        "BACKTEST RESULTS"
       );
 
       console.log(
-        "------------------"
+        "----------------"
       );
 
       console.log(
-        `Starting balance: $${results.startingBalance.toFixed(2)}`
+        `Starting balance: $${Number(
+          results.startingBalance ?? 0
+        ).toFixed(4)}`
       );
 
       console.log(
-        `Ending balance:   $${results.endingBalance.toFixed(2)}`
+        `Ending balance:   $${Number(
+          results.endingBalance ?? 0
+        ).toFixed(4)}`
       );
 
       console.log(
-        `Net profit:       $${results.netProfit.toFixed(2)}`
+        `Net profit:       $${Number(
+          results.netProfit ?? 0
+        ).toFixed(4)}`
       );
 
       console.log(
-        `Total trades:     ${results.totalTrades}`
+        `Trades:           ${
+          results.totalTrades ?? 0
+        }`
       );
 
       console.log(
-        `Winners:          ${results.winners}`
+        `Winners:          ${
+          results.winners ?? 0
+        }`
       );
 
       console.log(
-        `Losers:           ${results.losers}`
+        `Losers:           ${
+          results.losers ?? 0
+        }`
       );
 
       console.log(
-        `Win rate:         ${results.winRate.toFixed(2)}%`
+        `Win rate:         ${Number(
+          results.winRate ?? 0
+        ).toFixed(2)}%`
       );
 
       console.log(
         `Profit factor:    ${
           results.profitFactor === Infinity
             ? "∞"
-            : results.profitFactor.toFixed(2)
+            : Number(
+                results.profitFactor ?? 0
+              ).toFixed(4)
         }`
       );
 
-
-      // --------------------------------------------------
-      // RESPONSE
-      // --------------------------------------------------
 
       res.json({
 
         success: true,
 
-        symbol,
+        symbol:
+          cleanSymbol,
 
         timeframe,
 
         days,
-
-        settings: {
-
-          balance,
-
-          risk,
-
-          riskReward,
-
-          cooldown,
-
-        },
 
         count:
           candles.length,
@@ -577,9 +691,14 @@ app.post(
 
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
-      console.error(error);
+      console.error(
+        "Backtest error:",
+        error
+      );
 
 
       res.status(500).json({
@@ -600,29 +719,13 @@ app.post(
 // ======================================================
 // MULTI-COIN OPTIMIZER
 // ======================================================
-//
-// The number of days is supplied in the request.
-//
-// Example:
-//
-// {
-//   "symbols": ["POLUSDT"],
-//   "timeframe": "1m",
-//   "days": 10
-// }
-//
-// This means:
-//
-// POLUSDT
-// 1-minute candles
-// 10 days
-//
-// Approximately 14,400 candles.
-// ======================================================
 
 app.post(
   "/api/optimize",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
@@ -633,70 +736,71 @@ app.post(
       } = req.body;
 
 
-      // ==================================================
-      // TIMEFRAME
-      // ==================================================
-
       const interval =
-        getBinanceInterval(timeframe);
+        getBinanceInterval(
+          timeframe
+        );
 
-
-      // ==================================================
-      // DAYS
-      // ==================================================
 
       const days =
-        Number(requestedDays) || 30;
+        Number(
+          requestedDays
+        ) || 30;
 
 
-      if (days <= 0) {
+      if (
+        days <= 0
+      ) {
 
         return res.status(400).json({
 
           success: false,
 
           error:
-            `Invalid days value: ${requestedDays}`,
+            "Days must be greater than 0.",
 
         });
 
       }
 
 
-      // ==================================================
-      // SYMBOLS
-      // ==================================================
-
       const symbolList =
-        Array.isArray(symbols)
+        Array.isArray(
+          symbols
+        )
           ? symbols
           : [
+
               symbols ||
               "BTCUSDT",
+
             ];
 
 
-      // ==================================================
-      // RESULTS
-      // ==================================================
-
       const results = [];
 
-      let totalCombinations = 0;
+      let totalCombinations =
+        0;
 
-      let totalCompleted = 0;
+      let totalCompleted =
+        0;
 
       const overallStart =
         Date.now();
 
 
-      // ==================================================
-      // RUN EACH SYMBOL
-      // ==================================================
-
       for (
-        const symbol of symbolList
+        const rawSymbol
+        of symbolList
       ) {
+
+        const cleanSymbol =
+          String(
+            rawSymbol
+          )
+            .trim()
+            .toUpperCase();
+
 
         console.log("");
 
@@ -705,7 +809,7 @@ app.post(
         );
 
         console.log(
-          `Optimizing ${symbol} ${timeframe} for ${days} days`
+          `Optimizing ${cleanSymbol} ${timeframe} for ${days} days`
         );
 
         console.log(
@@ -713,33 +817,29 @@ app.post(
         );
 
 
-        // ------------------------------------------------
-        // FETCH HISTORICAL DATA
-        // ------------------------------------------------
-
         const candles =
           await fetchHistoricalCandles(
-            symbol,
+            cleanSymbol,
             interval,
             days
           );
 
 
         console.log(
-          `Fetched ${candles.length} candles for ` +
-          `${symbol} ${timeframe} (${days} days)`
+          `Fetched ${candles.length} candles`
         );
 
 
-        // ------------------------------------------------
-        // RUN OPTIMIZER
-        // ------------------------------------------------
+        // IMPORTANT:
+        //
+        // runOptimizer() is async because it uses
+        // worker threads.
+        //
+        // Therefore we MUST await it.
 
         const optimization =
-          runOptimizer(
-
+          await runOptimizer(
             candles,
-
             {
 
               balance: 100,
@@ -753,29 +853,25 @@ app.post(
               cooldownBars: 0,
 
             }
-
           );
 
 
-        // ------------------------------------------------
-        // TOTALS
-        // ------------------------------------------------
-
         totalCombinations +=
-          optimization.totalCombinations;
+          Number(
+            optimization.totalCombinations ?? 0
+          );
 
 
         totalCompleted +=
-          optimization.completed;
+          Number(
+            optimization.completed ?? 0
+          );
 
-
-        // ------------------------------------------------
-        // STORE RESULTS
-        // ------------------------------------------------
 
         results.push({
 
-          symbol,
+          symbol:
+            cleanSymbol,
 
           timeframe,
 
@@ -794,44 +890,16 @@ app.post(
             optimization.elapsedSeconds,
 
           results:
-            optimization.results,
+            Array.isArray(
+              optimization.results
+            )
+              ? optimization.results
+              : [],
 
         });
 
-
-        // ------------------------------------------------
-        // BEST RESULT
-        // ------------------------------------------------
-
-        console.log("");
-
-        console.log(
-          `Best result for ${symbol}:`
-        );
-
-
-        if (
-          optimization.results.length > 0
-        ) {
-
-          console.log(
-            optimization.results[0]
-          );
-
-        } else {
-
-          console.log(
-            "No valid results."
-          );
-
-        }
-
       }
 
-
-      // ==================================================
-      // TOTAL TIME
-      // ==================================================
 
       const elapsedSeconds =
         (
@@ -839,10 +907,6 @@ app.post(
           overallStart
         ) / 1000;
 
-
-      // ==================================================
-      // RESPONSE
-      // ==================================================
 
       res.json({
 
@@ -866,9 +930,14 @@ app.post(
 
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
-      console.error(error);
+      console.error(
+        "Optimizer error:",
+        error
+      );
 
 
       res.status(500).json({
@@ -887,6 +956,665 @@ app.post(
 
 
 // ======================================================
+// SIMULATION / RANGE OPTIMIZER
+// ======================================================
+//
+// Frontend sends:
+//
+// {
+//   symbol,
+//   timeframe,
+//   days,
+//   baseSettings,
+//   optimization
+// }
+//
+// ======================================================
+
+app.post(
+  "/api/simulate",
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      // ==================================================
+      // READ REQUEST
+      // ==================================================
+
+      const {
+
+        symbol,
+
+        timeframe,
+
+        days,
+
+        baseSettings,
+
+        optimization,
+
+      } = req.body;
+
+
+      // ==================================================
+      // DEBUG REQUEST
+      // ==================================================
+
+      console.log("");
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "SIMULATION REQUEST"
+      );
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "Symbol:",
+        symbol
+      );
+
+      console.log(
+        "Timeframe:",
+        timeframe
+      );
+
+      console.log(
+        "Days:",
+        days
+      );
+
+      console.log(
+        "Has baseSettings:",
+        Boolean(
+          baseSettings
+        )
+      );
+
+      console.log(
+        "Has optimization:",
+        Boolean(
+          optimization
+        )
+      );
+
+
+      console.log(
+        "Optimization request:"
+      );
+
+      console.log(
+        JSON.stringify(
+          optimization,
+          null,
+          2
+        )
+      );
+
+
+      // ==================================================
+      // VALIDATION
+      // ==================================================
+
+      if (!symbol) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            "Symbol is required.",
+
+        });
+
+      }
+
+
+      if (!timeframe) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            "Timeframe is required.",
+
+        });
+
+      }
+
+
+      const simulationDays =
+        Number(
+          days
+        );
+
+
+      if (
+        !Number.isFinite(
+          simulationDays
+        ) ||
+        simulationDays <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            "Days must be greater than 0.",
+
+        });
+
+      }
+
+
+      // ==================================================
+      // SAFE SETTINGS
+      // ==================================================
+
+      const safeBaseSettings =
+        baseSettings &&
+        typeof baseSettings === "object"
+
+          ? baseSettings
+
+          : {};
+
+
+      const safeOptimization =
+        optimization &&
+        typeof optimization === "object"
+
+          ? optimization
+
+          : {};
+
+
+      // ==================================================
+      // CLEAN SYMBOL
+      // ==================================================
+
+      const cleanSymbol =
+        String(
+          symbol
+        )
+          .trim()
+          .toUpperCase();
+
+
+      const interval =
+        getBinanceInterval(
+          timeframe
+        );
+
+
+      // ==================================================
+      // START
+      // ==================================================
+
+      console.log("");
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "SIMULATION START"
+      );
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        `Coin:       ${cleanSymbol}`
+      );
+
+      console.log(
+        `Timeframe:  ${timeframe}`
+      );
+
+      console.log(
+        `Days:       ${simulationDays}`
+      );
+
+
+      // ==================================================
+      // FETCH CANDLES
+      // ==================================================
+
+      const candles =
+        await fetchHistoricalCandles(
+          cleanSymbol,
+          interval,
+          simulationDays
+        );
+
+
+      console.log("");
+
+      console.log(
+        `Fetched ${candles.length} candles`
+      );
+
+
+      if (
+        candles.length === 0
+      ) {
+
+        throw new Error(
+          "No historical candles were returned."
+        );
+
+      }
+
+
+      // ==================================================
+      // BUILD GRID
+      // ==================================================
+      //
+      // Frontend says "optimization".
+      //
+      // buildGrid() expects:
+      //
+      // optimize
+      //
+      // We translate it here.
+      //
+      // ==================================================
+
+      const grid =
+        buildGrid({
+
+          baseSettings:
+            safeBaseSettings,
+
+          optimize:
+            safeOptimization,
+
+        });
+
+
+      // ==================================================
+      // PRINT GRID
+      // ==================================================
+
+      console.log("");
+
+      console.log(
+        "SIMULATION PARAMETER GRID"
+      );
+
+      console.log(
+        "----------------------------------------------"
+      );
+
+      console.log(
+        "EMA:",
+        grid.emaLength
+      );
+
+      console.log(
+        "SMA:",
+        grid.smaLength
+      );
+
+      console.log(
+        "Source:",
+        grid.source
+      );
+
+      console.log(
+        "KC Length:",
+        grid.keltnerLength
+      );
+
+      console.log(
+        "KC Mult:",
+        grid.keltnerMultiplier
+      );
+
+      console.log(
+        "ATR:",
+        grid.atrLength
+      );
+
+      console.log(
+        "Stoch Length:",
+        grid.stochasticLength
+      );
+
+      console.log(
+        "Stoch Smoothing:",
+        grid.stochasticSmoothing
+      );
+
+      console.log(
+        "MACD Fast:",
+        grid.macdFast
+      );
+
+      console.log(
+        "MACD Slow:",
+        grid.macdSlow
+      );
+
+      console.log(
+        "MACD Signal:",
+        grid.macdSignal
+      );
+
+      console.log(
+        "TP:",
+        grid.tpAtr
+      );
+
+      console.log(
+        "SL:",
+        grid.slAtr
+      );
+
+
+      // ==================================================
+      // EXPECTED COMBINATIONS
+      // ==================================================
+
+      const expectedCombinations =
+        Object.values(
+          grid
+        ).reduce(
+          (
+            total,
+            values
+          ) =>
+            total *
+            values.length,
+          1
+        );
+
+
+      console.log("");
+
+      console.log(
+        "EXPECTED COMBINATIONS:",
+        expectedCombinations
+      );
+
+
+      // ==================================================
+      // BASE STRATEGY SETTINGS
+      // ==================================================
+
+      const optimizerSettings = {
+
+        ...safeBaseSettings,
+
+        balance:
+          Number(
+            safeBaseSettings.balance ??
+            100
+          ),
+
+        margin:
+          Number(
+            safeBaseSettings.margin ??
+            3
+          ),
+
+        leverage:
+          Number(
+            safeBaseSettings.leverage ??
+            10
+          ),
+
+        roundTripFee:
+          Number(
+            safeBaseSettings.roundTripFee ??
+            0.04
+          ),
+
+        cooldownBars:
+          Number(
+            safeBaseSettings.cooldownBars ??
+            0
+          ),
+
+      };
+
+
+      // ==================================================
+      // RUN OPTIMIZER
+      // ==================================================
+      //
+      // IMPORTANT:
+      //
+      // THIS MUST HAVE "await".
+      //
+      // Worker optimizer returns a Promise.
+      //
+      // ==================================================
+
+      console.log("");
+
+      console.log(
+        "STARTING WORKER OPTIMIZER..."
+      );
+
+
+      const simulation =
+        await runOptimizer(
+
+          candles,
+
+          optimizerSettings,
+
+          {
+
+            grid,
+
+          }
+
+        );
+
+
+      // ==================================================
+      // VERIFY OPTIMIZER RESULT
+      // ==================================================
+
+      console.log("");
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "SERVER RECEIVED OPTIMIZER RESULT"
+      );
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "Total combinations:",
+        simulation?.totalCombinations
+      );
+
+      console.log(
+        "Completed:",
+        simulation?.completed
+      );
+
+      console.log(
+        "Results:",
+        Array.isArray(
+          simulation?.results
+        )
+          ? simulation.results.length
+          : "NOT ARRAY"
+      );
+
+
+      // ==================================================
+      // SAFE VALUES
+      // ==================================================
+
+      const totalCombinations =
+        Number(
+          simulation?.totalCombinations ??
+          expectedCombinations
+        );
+
+
+      const completed =
+        Number(
+          simulation?.completed ??
+          0
+        );
+
+
+      const elapsedSeconds =
+        Number(
+          simulation?.elapsedSeconds ??
+          0
+        );
+
+
+      const simulationResults =
+        Array.isArray(
+          simulation?.results
+        )
+          ? simulation.results
+          : [];
+
+
+      // ==================================================
+      // COMPLETE
+      // ==================================================
+
+      console.log("");
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "SIMULATION COMPLETE"
+      );
+
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        `Tests: ${completed}/${totalCombinations}`
+      );
+
+      console.log(
+        `Time: ${elapsedSeconds.toFixed(2)} seconds`
+      );
+
+      console.log(
+        `Returned results: ${simulationResults.length}`
+      );
+
+
+      if (
+        simulationResults.length > 0
+      ) {
+
+        console.log("");
+
+        console.log(
+          "TOP RESULT:"
+        );
+
+        console.log(
+          simulationResults[0]
+        );
+
+      }
+
+
+      // ==================================================
+      // SEND RESPONSE
+      // ==================================================
+
+      res.json({
+
+        success: true,
+
+        symbol:
+          cleanSymbol,
+
+        timeframe,
+
+        days:
+          simulationDays,
+
+        candles:
+          candles.length,
+
+        totalCombinations,
+
+        completed,
+
+        elapsedSeconds,
+
+        results:
+          simulationResults,
+
+      });
+
+    } catch (
+      error
+    ) {
+
+      console.error("");
+
+      console.error(
+        "=================================================="
+      );
+
+      console.error(
+        "SIMULATION ERROR"
+      );
+
+      console.error(
+        "=================================================="
+      );
+
+      console.error(
+        error
+      );
+
+
+      res.status(500).json({
+
+        success: false,
+
+        error:
+          error.message ||
+          "Simulation failed.",
+
+      });
+
+    }
+
+  }
+);
+
+
+// ======================================================
 // START SERVER
 // ======================================================
 
@@ -894,13 +1622,25 @@ app.listen(
   PORT,
   () => {
 
+    console.log("");
+
+    console.log(
+      "=================================================="
+    );
+
     console.log(
       `Strategy Tester API running on http://localhost:${PORT}`
     );
 
     console.log(
       "Supported timeframes:",
-      Object.keys(TIMEFRAME_MAP).join(", ")
+      Object.keys(
+        TIMEFRAME_MAP
+      ).join(", ")
+    );
+
+    console.log(
+      "=================================================="
     );
 
   }
