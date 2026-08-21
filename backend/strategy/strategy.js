@@ -2,35 +2,34 @@
 // PINE-MATCHED STRATEGY ENGINE
 //
 // Matches:
-//
 // EMA200 MACD + Stochastic BOT V1.3
 //
-// Pine behavior:
-//
-// - Source selectable: open/high/low/close
+// Main behavior:
+// - Source: open / high / low / close
 // - SMA filter
 // - EMA filter
-// - Keltner filter
+// - Keltner Channel filter
 // - Stochastic filter
 // - MACD filter
 // - Direction memory
-// - Direction reset after position close
-// - Static ATR captured on signal
+// - Direction reset after TP/SL position close
+// - ATR captured on signal candle
 // - TP / SL based on captured ATR
 // - $100 cash position size
-// - $0.04 commission per order
+// - $0.04 commission per executed order
 // - No pyramiding
-// - Signal generated on candle close
-// - Entry executes on NEXT candle open
+// - Signal evaluated on candle close
+// - Entry fills on NEXT candle OPEN
+// - Newly opened position does NOT get TP/SL evaluated
+//   on its entry candle
+// - Opposite signal reverses position
 //
 // IMPORTANT:
+// Historical OHLC cannot perfectly reproduce every TradingView broker
+// emulator intrabar detail.
 //
-// TradingView's historical broker emulator has detailed intrabar
-// assumptions that cannot be perfectly reconstructed from OHLC alone.
-//
-// When both TP and SL are touched in the same candle, this engine
-// uses the conservative assumption that SL is hit first.
-//
+// When both TP and SL are touched in the same candle:
+// STOP LOSS is assumed first (conservative).
 // =============================================================================
 
 
@@ -47,16 +46,14 @@ const DEFAULT_PARAMS = {
   balance: 100,
 
   // Pine:
-  //
-  // default_qty_type=strategy.cash
-  // default_qty_value=100
-  //
+  // default_qty_type = strategy.cash
+  // default_qty_value = 100
+
   orderValue: 100,
 
   // Pine:
-  //
-  // commission_type=strategy.commission.cash_per_order
-  // commission_value=0.04
+  // commission_type = strategy.commission.cash_per_order
+  // commission_value = 0.04
 
   commissionPerOrder: 0.04,
 
@@ -162,6 +159,7 @@ function safeNumber(
   return Number.isFinite(number)
     ? number
     : fallback;
+
 }
 
 
@@ -351,6 +349,7 @@ function calculateSMA(
           i - period
         ];
 
+
       if (
         old !== null &&
         old !== undefined &&
@@ -375,7 +374,8 @@ function calculateSMA(
     ) {
 
       result[i] =
-        sum / period;
+        sum /
+        period;
 
     }
 
@@ -391,7 +391,7 @@ function calculateSMA(
 // EMA
 // =============================================================================
 //
-// TradingView-style EMA initialization is approximated using an SMA seed.
+// Pine ta.ema() is seeded with an SMA-style initial value.
 //
 // =============================================================================
 
@@ -444,6 +444,7 @@ function calculateEMA(
 
     }
 
+
     sum +=
       Number(values[i]);
 
@@ -453,7 +454,8 @@ function calculateEMA(
   result[
     period - 1
   ] =
-    sum / period;
+    sum /
+    period;
 
 
   const multiplier =
@@ -560,17 +562,7 @@ function calculateTrueRange(
 // RMA / WILDER SMOOTHING
 // =============================================================================
 //
-// Pine:
-// ta.rma()
-// ta.atr()
-//
-// RMA:
-// first value = SMA(period)
-// next values:
-//
-// RMA =
-// (previous RMA * (period - 1) + current) / period
-//
+// Pine ta.rma()
 // =============================================================================
 
 function calculateRMA(
@@ -632,7 +624,8 @@ function calculateRMA(
   result[
     period - 1
   ] =
-    sum / period;
+    sum /
+    period;
 
 
   for (
@@ -665,10 +658,9 @@ function calculateRMA(
 // =============================================================================
 //
 // Pine:
+// ta.atr(length)
 //
-// atr = ta.atr(atrlength)
-//
-// ta.atr() = RMA(True Range)
+// = RMA(True Range)
 //
 // =============================================================================
 
@@ -700,7 +692,6 @@ function calculateATR(
 // ta.stoch(close, high, low, periodK)
 //
 // then:
-//
 // ta.sma(rawK, smoothK)
 //
 // =============================================================================
@@ -839,11 +830,8 @@ function calculateStochastic(
 //
 // fast_ma = ta.ema(src, fast_length)
 // slow_ma = ta.ema(src, slow_length)
-//
 // macd = fast_ma - slow_ma
-//
 // signal = ta.ema(macd, signal_length)
-//
 // hist = macd - signal
 //
 // =============================================================================
@@ -897,10 +885,6 @@ function calculateMACD(
 
   }
 
-
-  // -----------------------------------------------------
-  // Signal EMA over valid MACD values
-  // -----------------------------------------------------
 
   const signal =
     new Array(
@@ -1021,20 +1005,12 @@ function calculateIndicators(
   params
 ) {
 
-  // ====================================================
-  // SOURCE
-  // ====================================================
-
   const source =
     getSourceValues(
       candles,
       params.source
     );
 
-
-  // ====================================================
-  // SMA
-  // ====================================================
 
   const sma =
     calculateSMA(
@@ -1043,10 +1019,6 @@ function calculateIndicators(
     );
 
 
-  // ====================================================
-  // EMA
-  // ====================================================
-
   const ema =
     calculateEMA(
       source,
@@ -1054,20 +1026,12 @@ function calculateIndicators(
     );
 
 
-  // ====================================================
-  // ATR
-  // ====================================================
-
   const atr =
     calculateATR(
       candles,
       params.atrLength
     );
 
-
-  // ====================================================
-  // KELTNER
-  // ====================================================
 
   const keltnerMiddle =
     calculateSMA(
@@ -1126,36 +1090,20 @@ function calculateIndicators(
   }
 
 
-  // ====================================================
-  // STOCHASTIC
-  // ====================================================
-
   const stochastic =
     calculateStochastic(
       candles,
-
       params.stochasticLength,
-
       params.stochasticSmoothing
-
     );
 
 
-  // ====================================================
-  // MACD
-  // ====================================================
-
   const macd =
     calculateMACD(
-
       source,
-
       params.macdFast,
-
       params.macdSlow,
-
       params.macdSignal
-
     );
 
 
@@ -1187,20 +1135,6 @@ function calculateIndicators(
 // =============================================================================
 // SIGNAL
 // =============================================================================
-//
-// This reproduces:
-//
-// longCondition =
-//      (not useSMA or smaLongFilter) and
-//      (not useEMA or emaLongFilter) and
-//      (not useKC or kcLongFilter) and
-//      (not useStoch or stochLongFilter) and
-//      (not useMACD or macdLongFilter)
-//
-// shortCondition =
-//      ...
-//
-// =============================================================================
 
 function getSignal(
   candle,
@@ -1227,9 +1161,9 @@ function getSignal(
     indicators;
 
 
-  // ====================================================
+  // ---------------------------------------------------------------------------
   // INDICATOR AVAILABILITY
-  // ====================================================
+  // ---------------------------------------------------------------------------
 
   if (
     params.useSMA &&
@@ -1288,9 +1222,9 @@ function getSignal(
     candle.close;
 
 
-  // ====================================================
+  // ---------------------------------------------------------------------------
   // SMA
-  // ====================================================
+  // ---------------------------------------------------------------------------
 
   const smaLongFilter =
     !params.useSMA ||
@@ -1304,9 +1238,9 @@ function getSignal(
       sma[index];
 
 
-  // ====================================================
+  // ---------------------------------------------------------------------------
   // EMA
-  // ====================================================
+  // ---------------------------------------------------------------------------
 
   const emaLongFilter =
     !params.useEMA ||
@@ -1320,13 +1254,12 @@ function getSignal(
       ema[index];
 
 
-  // ====================================================
+  // ---------------------------------------------------------------------------
   // KELTNER
-  // ====================================================
+  // ---------------------------------------------------------------------------
 
-  const kcLongFilter =
+  const kcInsideChannel =
     !params.useKC ||
-
     (
       close <
         keltnerUpper[index] &&
@@ -1334,23 +1267,19 @@ function getSignal(
       close >
         keltnerLower[index]
     );
+
+
+  const kcLongFilter =
+    kcInsideChannel;
 
 
   const kcShortFilter =
-    !params.useKC ||
-
-    (
-      close <
-        keltnerUpper[index] &&
-
-      close >
-        keltnerLower[index]
-    );
+    kcInsideChannel;
 
 
-  // ====================================================
+  // ---------------------------------------------------------------------------
   // STOCHASTIC
-  // ====================================================
+  // ---------------------------------------------------------------------------
 
   const k =
     stochastic[index];
@@ -1366,9 +1295,9 @@ function getSignal(
     k > 50;
 
 
-  // ====================================================
+  // ---------------------------------------------------------------------------
   // MACD
-  // ====================================================
+  // ---------------------------------------------------------------------------
 
   const histogram =
     macd.histogram[index];
@@ -1384,9 +1313,9 @@ function getSignal(
     histogram > 0;
 
 
-  // ====================================================
-  // LONG
-  // ====================================================
+  // ---------------------------------------------------------------------------
+  // FINAL CONDITIONS
+  // ---------------------------------------------------------------------------
 
   const longCondition =
 
@@ -1400,10 +1329,6 @@ function getSignal(
 
     macdLongFilter;
 
-
-  // ====================================================
-  // SHORT
-  // ====================================================
 
   const shortCondition =
 
@@ -1484,7 +1409,7 @@ function calculateQuantity(
 
 
 // =============================================================================
-// OPEN POSITION
+// CREATE POSITION
 // =============================================================================
 
 function createPosition({
@@ -1516,15 +1441,13 @@ function createPosition({
     null;
 
 
-  // ====================================================
-  // TP
-  // ====================================================
+  // ---------------------------------------------------------------------------
+  // TAKE PROFIT
+  // ---------------------------------------------------------------------------
 
   if (
     Number.isFinite(atr) &&
-    Number(
-      params.tpAtr
-    ) > 0
+    Number(params.tpAtr) > 0
   ) {
 
     if (
@@ -1534,35 +1457,33 @@ function createPosition({
       takeProfit =
         entryPrice +
         atr *
-          Number(
-            params.tpAtr
-          );
+        Number(
+          params.tpAtr
+        );
 
     } else {
 
       takeProfit =
         entryPrice -
         atr *
-          Number(
-            params.tpAtr
-          );
+        Number(
+          params.tpAtr
+        );
 
     }
 
   }
 
 
-  // ====================================================
-  // SL
-  // ====================================================
+  // ---------------------------------------------------------------------------
+  // STOP LOSS
+  // ---------------------------------------------------------------------------
 
   if (
     Number.isFinite(atr) &&
     params.slAtr !== null &&
     params.slAtr !== undefined &&
-    Number(
-      params.slAtr
-    ) > 0
+    Number(params.slAtr) > 0
   ) {
 
     if (
@@ -1572,18 +1493,18 @@ function createPosition({
       stopLoss =
         entryPrice -
         atr *
-          Number(
-            params.slAtr
-          );
+        Number(
+          params.slAtr
+        );
 
     } else {
 
       stopLoss =
         entryPrice +
         atr *
-          Number(
-            params.slAtr
-          );
+        Number(
+          params.slAtr
+        );
 
     }
 
@@ -1619,13 +1540,15 @@ function createPosition({
     entryReason:
       reason,
 
+    entryFee: 0,
+
   };
 
 }
 
 
 // =============================================================================
-// TRADE EXIT
+// BUILD CLOSED TRADE
 // =============================================================================
 
 function buildClosedTrade({
@@ -1664,6 +1587,9 @@ function buildClosedTrade({
     direction:
       position.direction,
 
+    signalIndex:
+      position.signalIndex,
+
     entryIndex:
       position.entryIndex,
 
@@ -1695,21 +1621,42 @@ function buildClosedTrade({
     stopLoss:
       position.stopLoss,
 
+    entryReason:
+      position.entryReason,
+
     exitReason,
+
+    entryFee:
+      position.entryFee || 0,
+
+    exitFee:
+      commission,
 
     grossPnl,
 
     fee:
-      commission,
+      commission +
+      (position.entryFee || 0),
 
     pnl:
-      netPnl,
+      netPnl -
+      (position.entryFee || 0),
 
     result:
-      netPnl > 0
+      (
+        netPnl -
+        (position.entryFee || 0)
+      ) > 0
+
         ? "WIN"
-        : netPnl < 0
+
+        : (
+            netPnl -
+            (position.entryFee || 0)
+          ) < 0
+
           ? "LOSS"
+
           : "BREAKEVEN",
 
   };
@@ -1721,12 +1668,12 @@ function buildClosedTrade({
 // CHECK TP / SL
 // =============================================================================
 //
-// OHLC alone cannot tell which level was hit first if both are inside
-// the same candle.
+// Both TP and SL touched:
+// -> STOP LOSS first
 //
-// Conservative rule:
-//
-// BOTH HIT -> SL
+// IMPORTANT:
+// This function is NOT called on the same candle where a position
+// was newly opened.
 //
 // =============================================================================
 
@@ -1734,6 +1681,10 @@ function checkExit(
   position,
   candle
 ) {
+
+  // ---------------------------------------------------------------------------
+  // LONG
+  // ---------------------------------------------------------------------------
 
   if (
     position.direction === "LONG"
@@ -1804,6 +1755,10 @@ function checkExit(
 
   }
 
+
+  // ---------------------------------------------------------------------------
+  // SHORT
+  // ---------------------------------------------------------------------------
 
   if (
     position.direction === "SHORT"
@@ -1889,9 +1844,9 @@ function runStrategy(
   userParams = {}
 ) {
 
-  // ====================================================
+  // ===========================================================================
   // PARAMETERS
-  // ====================================================
+  // ===========================================================================
 
   const params = {
 
@@ -1902,9 +1857,9 @@ function runStrategy(
   };
 
 
-  // ====================================================
-  // NORMALIZE
-  // ====================================================
+  // ===========================================================================
+  // NORMALIZE CANDLES
+  // ===========================================================================
 
   const candles =
     rawCandles
@@ -1963,9 +1918,9 @@ function runStrategy(
   }
 
 
-  // ====================================================
+  // ===========================================================================
   // INDICATORS
-  // ====================================================
+  // ===========================================================================
 
   const indicators =
     calculateIndicators(
@@ -1974,9 +1929,9 @@ function runStrategy(
     );
 
 
-  // ====================================================
+  // ===========================================================================
   // ACCOUNT
-  // ====================================================
+  // ===========================================================================
 
   let balance =
     safeNumber(
@@ -1989,77 +1944,78 @@ function runStrategy(
     balance;
 
 
-  // ====================================================
-  // POSITION
-  // ====================================================
+  // ===========================================================================
+  // CURRENT POSITION
+  // ===========================================================================
 
   let position =
     null;
 
 
-  // ====================================================
+  // ===========================================================================
   // DIRECTION MEMORY
-  // ====================================================
+  // ===========================================================================
   //
-  // 0  = none
-  // 1  = last signal was LONG
-  // -1 = last signal was SHORT
+  // 0  = no direction memory
+  // 1  = last accepted direction was LONG
+  // -1 = last accepted direction was SHORT
   //
-  // IMPORTANT:
+  // V1.3:
+  // Reset to 0 after TP / SL position close.
   //
-  // Reset to 0 after position closes.
-  //
-  // Matches your new Pine version.
-  //
-  // ====================================================
+  // ===========================================================================
 
   let lastDirection =
     0;
 
 
-  // ====================================================
+  // ===========================================================================
   // PENDING ORDER
-  // ====================================================
+  // ===========================================================================
   //
-  // Pine strategy.entry() is generated on the signal bar
-  // and fills on the next available bar by default.
+  // Signal generated on candle close.
   //
-  // We therefore store the signal and execute it at the
-  // next candle OPEN.
+  // Order executes on NEXT candle OPEN.
   //
-  // ====================================================
+  // ===========================================================================
 
   let pendingOrder =
     null;
 
 
-  // ====================================================
-  // PREVENT SAME-CANDLE REENTRY AFTER EXIT
-  // ====================================================
-
-  let blockedEntryIndex =
-    -1;
-
-
-  // ====================================================
-  // COOLDOWN
-  // ====================================================
+  // ===========================================================================
+  // LAST EXIT
+  // ===========================================================================
 
   let lastExitIndex =
     -Infinity;
 
 
-  // ====================================================
+  // ===========================================================================
+  // SAME-CANDLE ENTRY/EXIT BLOCK
+  // ===========================================================================
+  //
+  // True when a position was just opened on the current candle.
+  //
+  // We intentionally DO NOT check TP/SL on the entry candle.
+  //
+  // ===========================================================================
+
+  let justOpenedThisCandle =
+    false;
+
+
+  // ===========================================================================
   // TRADES
-  // ====================================================
+  // ===========================================================================
 
   const trades =
     [];
 
 
-  // ====================================================
+  // ===========================================================================
   // EQUITY
-  // ====================================================
+  // ===========================================================================
 
   const equityCurve =
     [];
@@ -2073,9 +2029,9 @@ function runStrategy(
     0;
 
 
-  // ====================================================
+  // ===========================================================================
   // MAIN LOOP
-  // ====================================================
+  // ===========================================================================
 
   for (
     let i = 0;
@@ -2087,9 +2043,17 @@ function runStrategy(
       candles[i];
 
 
-    // ==================================================
+    // ========================================================================
+    // RESET PER-CANDLE FLAG
+    // ========================================================================
+
+    justOpenedThisCandle =
+      false;
+
+
+    // ========================================================================
     // 1. EXECUTE PENDING ORDER AT CURRENT OPEN
-    // ==================================================
+    // ========================================================================
 
     if (
       pendingOrder &&
@@ -2104,40 +2068,32 @@ function runStrategy(
         null;
 
 
-      // ------------------------------------------------
+      // ----------------------------------------------------------------------
       // POSITION EXISTS
-      // ------------------------------------------------
+      // ----------------------------------------------------------------------
 
       if (
         position
       ) {
 
-        // ----------------------------------------------
+        // ====================================================================
         // SAME DIRECTION
-        // ----------------------------------------------
+        // ====================================================================
 
         if (
           position.direction ===
           order.direction
         ) {
 
-          // Nothing to do.
+          // No new position.
 
         }
 
-        // ----------------------------------------------
-        // REVERSAL
-        // ----------------------------------------------
+        // ====================================================================
+        // OPPOSITE DIRECTION -> REVERSAL
+        // ====================================================================
 
         else {
-
-          // TradingView's opposite strategy.entry()
-          // reverses the position at the next available
-          // execution price.
-          //
-          // Treat the reversal as one new order.
-          //
-          // One commission is charged for this order.
 
           const reversalFee =
             safeNumber(
@@ -2178,6 +2134,10 @@ function runStrategy(
           );
 
 
+          // ------------------------------------------------------------------
+          // OPEN NEW POSITION AT SAME EXECUTION PRICE
+          // ------------------------------------------------------------------
+
           const newPosition =
             createPosition({
 
@@ -2204,15 +2164,18 @@ function runStrategy(
             });
 
 
-          // The reversal order already paid
-          // one commission above.
-          //
-          // Store it as part of the new position
-          // so future reporting remains clear.
-
           newPosition.entryTime =
             candle.time;
 
+
+          // ------------------------------------------------------------------
+          // IMPORTANT:
+          //
+          // For a TradingView reversal order, this is one executed order.
+          // We already applied its commission to the closing transaction.
+          //
+          // No second entry commission here.
+          // ------------------------------------------------------------------
 
           newPosition.entryFee =
             0;
@@ -2222,24 +2185,28 @@ function runStrategy(
             newPosition;
 
 
-          // IMPORTANT:
-          //
-          // Direction memory changes to the
-          // new direction immediately.
-
           lastDirection =
-            order.direction ===
-            "LONG"
+            order.direction === "LONG"
               ? 1
               : -1;
+
+
+          // ------------------------------------------------------------------
+          // IMPORTANT:
+          //
+          // No TP / SL check on this entry candle.
+          // ------------------------------------------------------------------
+
+          justOpenedThisCandle =
+            true;
 
         }
 
       }
 
-      // ------------------------------------------------
-      // NO POSITION
-      // ------------------------------------------------
+      // ----------------------------------------------------------------------
+      // NO POSITION -> OPEN
+      // ----------------------------------------------------------------------
 
       else {
 
@@ -2250,7 +2217,6 @@ function runStrategy(
           );
 
 
-        // Entry commission is paid immediately.
         balance -=
           entryFee;
 
@@ -2292,28 +2258,38 @@ function runStrategy(
         position =
           newPosition;
 
+
+        // ------------------------------------------------------------------
+        // Pine has now filled the order.
+        // strategy.exit() is not available until the next strategy
+        // calculation.
+        // ------------------------------------------------------------------
+
+        justOpenedThisCandle =
+          true;
+
       }
 
     }
 
 
-    // ==================================================
+    // ========================================================================
     // 2. CHECK TP / SL
-    // ==================================================
+    // ========================================================================
     //
-    // This occurs after a pending order has filled.
+    // NEVER check TP/SL on the candle where the position was just opened.
     //
-    // Therefore a position can technically hit TP/SL on
-    // its entry candle if the bar range crosses a level.
+    // This is the important Pine-matching fix.
     //
-    // ==================================================
+    // ========================================================================
 
     let closedThisCandle =
       false;
 
 
     if (
-      position
+      position &&
+      !justOpenedThisCandle
     ) {
 
       const exit =
@@ -2374,15 +2350,9 @@ function runStrategy(
           i;
 
 
-        blockedEntryIndex =
-          i;
-
-
-        // ==================================================
-        // NEW PINE BEHAVIOR
-        //
-        // Reset direction after TP/SL.
-        // ==================================================
+        // --------------------------------------------------------------------
+        // V1.3 RESET
+        // --------------------------------------------------------------------
 
         lastDirection =
           0;
@@ -2396,14 +2366,18 @@ function runStrategy(
     }
 
 
-    // ==================================================
-    // 3. SIGNAL
-    // ==================================================
+    // ========================================================================
+    // 3. SIGNAL ON CURRENT CANDLE CLOSE
+    // ========================================================================
     //
-    // Never generate another entry on the same candle
-    // where TP/SL just closed a position.
+    // If TP/SL closed this position this candle:
     //
-    // ==================================================
+    // - don't generate another signal on same candle
+    // - direction memory is already reset
+    //
+    // Next candle can enter again.
+    //
+    // ========================================================================
 
     if (
       !closedThisCandle
@@ -2422,9 +2396,9 @@ function runStrategy(
         signal
       ) {
 
-        // --------------------------------------------
+        // --------------------------------------------------------------------
         // DIRECTION MEMORY
-        // --------------------------------------------
+        // --------------------------------------------------------------------
 
         const directionAllowed =
 
@@ -2435,9 +2409,9 @@ function runStrategy(
             : lastDirection !== -1;
 
 
-        // --------------------------------------------
-        // CHECK COOLDOWN
-        // --------------------------------------------
+        // --------------------------------------------------------------------
+        // COOLDOWN
+        // --------------------------------------------------------------------
 
         const barsSinceExit =
           i -
@@ -2451,9 +2425,9 @@ function runStrategy(
           );
 
 
-        // --------------------------------------------
-        // CHECK WHETHER ORDER ALREADY PENDING
-        // --------------------------------------------
+        // --------------------------------------------------------------------
+        // NO EXISTING PENDING ORDER
+        // --------------------------------------------------------------------
 
         const orderPending =
           Boolean(
@@ -2477,25 +2451,18 @@ function runStrategy(
             )
           ) {
 
-            // ------------------------------------------
-            // SAVE DIRECTION MEMORY IMMEDIATELY
+            // ----------------------------------------------------------------
+            // MATCH PINE:
             //
-            // This matches Pine:
-            //
-            // lastDirection := 1
-            //
-            // on the signal bar.
-            // ------------------------------------------
+            // lastDirection changes on signal candle,
+            // NOT on fill candle.
+            // ----------------------------------------------------------------
 
             lastDirection =
               signal === "LONG"
                 ? 1
                 : -1;
 
-
-            // ------------------------------------------
-            // SAVE PENDING ORDER
-            // ------------------------------------------
 
             pendingOrder = {
 
@@ -2524,9 +2491,9 @@ function runStrategy(
     }
 
 
-    // ==================================================
+    // ========================================================================
     // 4. EQUITY
-    // ==================================================
+    // ========================================================================
 
     let equity =
       balance;
@@ -2537,6 +2504,7 @@ function runStrategy(
     ) {
 
       const unrealized =
+
         position.direction === "LONG"
 
           ? (
@@ -2569,9 +2537,9 @@ function runStrategy(
     });
 
 
-    // ==================================================
-    // 5. PEAK
-    // ==================================================
+    // ========================================================================
+    // 5. PEAK EQUITY
+    // ========================================================================
 
     peakEquity =
       Math.max(
@@ -2580,11 +2548,12 @@ function runStrategy(
       );
 
 
-    // ==================================================
+    // ========================================================================
     // 6. DRAWDOWN
-    // ==================================================
+    // ========================================================================
 
     const drawdown =
+
       peakEquity === 0
 
         ? 0
@@ -2610,17 +2579,15 @@ function runStrategy(
   }
 
 
-  // ====================================================
-  // CLOSE FINAL OPEN POSITION FOR REPORTING
-  // ====================================================
+  // ===========================================================================
+  // FINAL OPEN POSITION
+  // ===========================================================================
   //
-  // TradingView leaves an open trade open at the end
-  // unless explicitly closed.
+  // Like TradingView:
   //
-  // Therefore we DO NOT add this unrealized P&L to
-  // realized netProfit.
+  // An open position at the end is NOT automatically realized.
   //
-  // ====================================================
+  // ===========================================================================
 
   const finalCandle =
     candles[
@@ -2677,9 +2644,9 @@ function runStrategy(
   }
 
 
-  // ====================================================
+  // ===========================================================================
   // STATISTICS
-  // ====================================================
+  // ===========================================================================
 
   const winners =
     trades.filter(
@@ -2702,9 +2669,9 @@ function runStrategy(
     );
 
 
-  // ====================================================
+  // ===========================================================================
   // GROSS PROFIT
-  // ====================================================
+  // ===========================================================================
 
   const grossProfit =
     winners.reduce(
@@ -2718,9 +2685,9 @@ function runStrategy(
     );
 
 
-  // ====================================================
+  // ===========================================================================
   // GROSS LOSS
-  // ====================================================
+  // ===========================================================================
 
   const grossLoss =
     losers.reduce(
@@ -2736,20 +2703,21 @@ function runStrategy(
     );
 
 
-  // ====================================================
-  // REALIZED NET PROFIT
-  // ====================================================
+  // ===========================================================================
+  // NET PROFIT
+  // ===========================================================================
 
   const netProfit =
     balance -
     startingBalance;
 
 
-  // ====================================================
+  // ===========================================================================
   // WIN RATE
-  // ====================================================
+  // ===========================================================================
 
   const winRate =
+
     trades.length === 0
 
       ? 0
@@ -2761,9 +2729,9 @@ function runStrategy(
         100;
 
 
-  // ====================================================
+  // ===========================================================================
   // PROFIT FACTOR
-  // ====================================================
+  // ===========================================================================
 
   const profitFactor =
 
@@ -2779,9 +2747,9 @@ function runStrategy(
         grossLoss;
 
 
-  // ====================================================
+  // ===========================================================================
   // RETURN
-  // ====================================================
+  // ===========================================================================
 
   const returnPercent =
 
@@ -2796,11 +2764,12 @@ function runStrategy(
         100;
 
 
-  // ====================================================
+  // ===========================================================================
   // AVERAGE TRADE
-  // ====================================================
+  // ===========================================================================
 
   const averageTrade =
+
     trades.length === 0
 
       ? 0
@@ -2809,9 +2778,9 @@ function runStrategy(
         trades.length;
 
 
-  // ====================================================
+  // ===========================================================================
   // RESULT
-  // ====================================================
+  // ===========================================================================
 
   return {
 
@@ -2883,4 +2852,3 @@ module.exports = {
   calculateIndicators,
 
 };
-
